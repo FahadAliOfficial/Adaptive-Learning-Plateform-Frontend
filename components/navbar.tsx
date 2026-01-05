@@ -15,7 +15,7 @@ export function Navbar({ onMenuClick, showMenu = false }: NavbarProps) {
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-blue-100/50 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60 shadow-sm">
-      <div className="container flex h-20 items-center px-4">
+      <div className="container mx-auto flex h-20 items-center px-4">
         {showMenu && (
           <Button
             variant="ghost"
