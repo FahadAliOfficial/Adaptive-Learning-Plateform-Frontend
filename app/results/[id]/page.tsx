@@ -17,7 +17,7 @@ import {
     ChevronUp,
     ChevronLeft,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 // Mock results data
 const mockResults = {
@@ -141,8 +141,54 @@ export default function ResultsPage() {
     const router = useRouter()
     const params = useParams()
     const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null)
+    const [results, setResults] = useState<any>(null)
 
-    const results = mockResults
+    // Load test results from localStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const storedResults = localStorage.getItem('testResults')
+            if (storedResults) {
+                const parsedResults = JSON.parse(storedResults)
+                
+                // Format questions with isCorrect flag
+                const formattedQuestions = parsedResults.questions.map((q: any, index: number) => ({
+                    ...q,
+                    selectedAnswer: parsedResults.answers[index] ?? -1,
+                    isCorrect: parsedResults.answers[index] === q.correctAnswer,
+                    explanation: q.explanation || "No explanation available."
+                }))
+                
+                setResults({
+                    ...parsedResults,
+                    questions: formattedQuestions,
+                    strongTopics: [],
+                    weakTopics: [],
+                })
+            } else {
+                // Fallback to mock data if no results found
+                setResults(mockResults)
+            }
+        }
+    }, [])
+
+    const handlePracticeAgain = () => {
+        if (results?.concept_id) {
+            router.push(`/practice?concept=${results.concept_id}&mode=${results.mode}`)
+        } else {
+            router.push('/practice')
+        }
+    }
+
+    if (!results) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600 dark:text-slate-400">Loading results...</p>
+                </div>
+            </div>
+        )
+    }
     const percentage = (results.score / results.totalQuestions) * 100
 
     const getGrade = (percentage: number) => {
@@ -456,7 +502,7 @@ export default function ResultsPage() {
                         variant="outline"
                         size="lg"
                         className="flex-1 border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-950"
-                        onClick={() => router.push(`/learnings/${params.id}`)}
+                        onClick={() => router.push('/dashboard')}
                     >
                         <Home className="mr-2 h-4 w-4" />
                         Back to Dashboard
@@ -464,10 +510,10 @@ export default function ResultsPage() {
                     <Button
                         size="lg"
                         className="flex-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-700 shadow-lg shadow-emerald-500/50"
-                        onClick={() => router.push(`/test/${params.id}`)}
+                        onClick={handlePracticeAgain}
                     >
                         <RotateCcw className="mr-2 h-4 w-4" />
-                        Retake Test
+                        Practice Again
                     </Button>
                 </div>
             </div>

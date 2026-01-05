@@ -92,6 +92,32 @@ export default function TestPage() {
   const [answers, setAnswers] = useState<{ [key: number]: number }>({})
   const [timeLeft, setTimeLeft] = useState(1800) // 30 minutes
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [sessionConfig, setSessionConfig] = useState<any>(null)
+  const [questions, setQuestions] = useState(mockQuestions)
+
+  // Load session config from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedSession = localStorage.getItem('currentSession')
+      if (storedSession) {
+        const config = JSON.parse(storedSession)
+        setSessionConfig(config)
+        
+        // TODO: In production, fetch questions from API based on config
+        // GET /api/questions?concept={concept_id}&difficulty={difficulty}&count={question_count}
+        
+        // Limit questions to selected count
+        setQuestions(mockQuestions.slice(0, config.question_count))
+        
+        // Adjust timer based on mode
+        if (config.mode === 'exam') {
+          setTimeLeft(config.question_count * 90) // 1.5 minutes per question
+        } else {
+          setTimeLeft(config.question_count * 180) // 3 minutes per question for practice/review
+        }
+      }
+    }
+  }, [])
 
   // Timer
   useEffect(() => {
@@ -119,7 +145,7 @@ export default function TestPage() {
   }
 
   const handleNext = () => {
-    if (currentQuestion < mockQuestions.length - 1) {
+    if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1)
     }
   }
@@ -131,11 +157,32 @@ export default function TestPage() {
   }
 
   const handleSubmit = () => {
-    // Calculate results and redirect to results page
-    router.push(`/results/${params.id}?test=completed`)
+    // Calculate results
+    const score = Object.entries(answers).filter(([index, answer]) => 
+      questions[parseInt(index)]?.correctAnswer === answer
+    ).length
+    
+    const results = {
+      session_id: params.id,
+      concept_id: sessionConfig?.concept_id || 'UNIV_VAR',
+      concept_name: sessionConfig?.concept_name || 'Variables & Data Types',
+      score,
+      totalQuestions: questions.length,
+      accuracy: Math.round((score / questions.length) * 100),
+      answers,
+      questions,
+      mode: sessionConfig?.mode || 'practice',
+      difficulty: sessionConfig?.difficulty || 0.5,
+    }
+    
+    // Store results in localStorage for results page
+    localStorage.setItem('testResults', JSON.stringify(results))
+    
+    // Redirect to results page
+    router.push(`/results/${params.id}`)
   }
 
-  const progress = ((currentQuestion + 1) / mockQuestions.length) * 100
+  const progress = ((currentQuestion + 1) / questions.length) * 100
   const answeredCount = Object.keys(answers).length
 
   return (
@@ -153,7 +200,9 @@ export default function TestPage() {
                 <ChevronLeft className="h-5 w-5" />
               </Button>
 
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-cyan-600 to-indigo-600 bg-clip-text text-transparent animate-gradient-x">Python Assessment</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-cyan-600 to-indigo-600 bg-clip-text text-transparent animate-gradient-x">
+                {sessionConfig?.concept_name || 'Python Assessment'}
+              </h1>
             </div>
 
             <Card className={`border-none shadow-lg ${
@@ -182,7 +231,7 @@ export default function TestPage() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between text-sm font-medium text-slate-600 dark:text-slate-400">
-                  <span>Question {currentQuestion + 1} of {mockQuestions.length}</span>
+                  <span>Question {currentQuestion + 1} of {questions.length}</span>
                   <span>{answeredCount} answered</span>
                 </div>
                 <Progress value={progress} className="h-2" />
@@ -196,7 +245,7 @@ export default function TestPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-5 gap-2 max-h-[calc(100vh-400px)] overflow-y-auto pr-2">
-                  {mockQuestions.map((_, index) => (
+                  {questions.map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentQuestion(index)}
