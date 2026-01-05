@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, BookOpen, Settings, LogOut, X, Brain, Menu, Sparkles, User } from "lucide-react"
+import { LayoutDashboard, BookOpen, Settings, LogOut, X, Brain, Menu, Sparkles, User, Target } from "lucide-react"
 import { Button } from "./ui/button"
 import { ThemeToggle } from "./theme-toggle"
 import { useState } from "react"
@@ -21,6 +21,14 @@ const navigation = [
     color: "from-blue-600 to-blue-500",
     hoverColor: "hover:bg-blue-50 dark:hover:bg-blue-950",
     activeColor: "bg-gradient-to-r from-blue-600 to-blue-500"
+  },
+  {
+    name: "Practice",
+    href: "/practice",
+    icon: Target,
+    color: "from-orange-600 to-orange-500",
+    hoverColor: "hover:bg-orange-50 dark:hover:bg-orange-950",
+    activeColor: "bg-gradient-to-r from-orange-600 to-orange-500"
   },
   {
     name: "Analytics",
