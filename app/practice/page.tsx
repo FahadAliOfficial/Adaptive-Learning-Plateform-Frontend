@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,7 +75,7 @@ const DIFFICULTY_LABELS = [
   { value: 1.0, label: "Expert", color: "text-red-600 dark:text-red-400" },
 ]
 
-export default function PracticePage() {
+function PracticeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -382,5 +382,20 @@ export default function PracticePage() {
         </main>
       </div>
     </div>
+  )
+}
+
+export default function PracticePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading practice session...</p>
+        </div>
+      </div>
+    }>
+      <PracticeContent />
+    </Suspense>
   )
 }

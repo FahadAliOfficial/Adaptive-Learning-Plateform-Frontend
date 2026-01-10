@@ -19,6 +19,22 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 
+// Type definitions
+type TopicResult = {
+    name: string;
+    accuracy: number;
+}
+
+type QuestionResult = {
+    id: number;
+    question: string;
+    options: string[];
+    selectedAnswer: number;
+    correctAnswer: number;
+    isCorrect: boolean;
+    explanation: string;
+}
+
 // Mock results data
 const mockResults = {
     score: 8,
@@ -290,7 +306,7 @@ export default function ResultsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {results.strongTopics.map((topic, index) => (
+                            {results.strongTopics.map((topic: TopicResult, index: number) => (
                                 <div key={index} className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="font-medium">{topic.name}</span>
@@ -317,7 +333,7 @@ export default function ResultsPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
-                                {results.weakTopics.map((topic, index) => (
+                                {results.weakTopics.map((topic: TopicResult, index: number) => (
                                     <div key={index} className="space-y-2">
                                         <div className="flex justify-between text-sm">
                                             <span className="font-medium">{topic.name}</span>
@@ -411,7 +427,7 @@ export default function ResultsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {results.questions.map((question, index) => (
+                        {results.questions.map((question: QuestionResult, index: number) => (
                             <Card
                                 key={question.id}
                                 className={`border-2 ${question.isCorrect
