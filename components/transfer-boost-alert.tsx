@@ -27,10 +27,10 @@ export function TransferBoostAlert({ boosts }: TransferBoostAlertProps) {
       {boosts.map((boost, index) => (
         <Alert
           key={index}
-          className="border-2 border-blue-200 dark:border-blue-900 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950"
+          className="border-2 border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30"
         >
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0">
+            <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">

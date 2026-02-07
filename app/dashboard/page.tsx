@@ -204,7 +204,7 @@ export default function DashboardPage() {
   // Show loading while checking language
   if (!currentLanguage) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-slate-600 dark:text-slate-400">Loading...</p>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="md:pl-64">
@@ -229,7 +229,7 @@ export default function DashboardPage() {
             <div className="relative">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
                 <div>
-                  <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-blue-600 via-green-500 to-blue-600 bg-clip-text text-transparent animate-gradient-x">
+                  <h1 className="text-4xl font-black mb-2 text-slate-900 dark:text-white">
                     Welcome to {siteName}! 👋
                   </h1>
                   <p className="text-lg text-slate-600 dark:text-slate-300">
@@ -270,10 +270,10 @@ export default function DashboardPage() {
           {/* Stats Overview */}
           <div className="grid gap-6 md:grid-cols-4 mb-8">
             <Card className="relative overflow-hidden border-2 border-blue-100 dark:border-blue-900/50 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/20 group bg-white dark:bg-slate-800">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/20 to-transparent rounded-bl-full"></div>
+              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Active Paths</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/50 group-hover:scale-110 transition-transform">
+                <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
                   <BookOpen className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
@@ -283,10 +283,10 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="relative overflow-hidden border-2 border-green-100 dark:border-green-900/50 hover:border-green-500 dark:hover:border-green-400 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/20 group bg-white dark:bg-slate-800">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-500/20 to-transparent rounded-bl-full"></div>
+              <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Total Topics</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-600 to-green-500 flex items-center justify-center shadow-lg shadow-green-500/50 group-hover:scale-110 transition-transform">
+                <div className="h-10 w-10 rounded-lg bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
                   <Code2 className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
@@ -298,10 +298,10 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="relative overflow-hidden border-2 border-yellow-100 dark:border-yellow-900/50 hover:border-yellow-500 dark:hover:border-yellow-400 transition-all duration-300 hover:shadow-xl hover:shadow-yellow-500/20 group bg-white dark:bg-slate-800">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-yellow-500/20 to-transparent rounded-bl-full"></div>
+              <div className="absolute top-0 right-0 w-20 h-20 bg-yellow-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Avg Accuracy</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-yellow-500 to-yellow-400 flex items-center justify-center shadow-lg shadow-yellow-500/50 group-hover:scale-110 transition-transform">
+                <div className="h-10 w-10 rounded-lg bg-yellow-500 flex items-center justify-center shadow-lg shadow-yellow-500/30 group-hover:scale-110 transition-transform">
                   <TrendingUp className="h-5 w-5 text-slate-900" />
                 </div>
               </CardHeader>
@@ -319,10 +319,10 @@ export default function DashboardPage() {
             </Card>
 
             <Card className="relative overflow-hidden border-2 border-purple-100 dark:border-purple-900/50 hover:border-purple-500 dark:hover:border-purple-400 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group bg-white dark:bg-slate-800">
-              <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500/20 to-transparent rounded-bl-full"></div>
+              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Languages</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/50 group-hover:scale-110 transition-transform">
+                <div className="h-10 w-10 rounded-lg bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
                   <Play className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
@@ -387,7 +387,7 @@ export default function DashboardPage() {
                       key={card.id}
                       className="relative overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/30 hover:-translate-y-1 group bg-white dark:bg-slate-800"
                     >
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-transparent rounded-bl-[50px]"></div>
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-bl-[50px]"></div>
                       <CardHeader>
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
@@ -403,10 +403,10 @@ export default function DashboardPage() {
                           <span
                             className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-lg ${
                               difficultyLabel === "Easy"
-                                ? "bg-gradient-to-r from-green-500 to-green-600 text-white"
+                                ? "bg-green-600 text-white"
                                 : difficultyLabel === "Medium"
-                                ? "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white"
-                                : "bg-gradient-to-r from-red-500 to-red-600 text-white"
+                                ? "bg-yellow-500 text-white"
+                                : "bg-red-600 text-white"
                             }`}
                           >
                             {difficultyLabel}
@@ -424,13 +424,13 @@ export default function DashboardPage() {
                         </div>
                         <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-gradient-to-r from-blue-600 to-green-500 rounded-full transition-all duration-500"
+                            className="h-full bg-blue-600 rounded-full transition-all duration-500"
                             style={{ width: `${card.progress}%` }}
                           />
                         </div>
                       </div>
 
-                      <div className="flex justify-between items-center p-3 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-950 dark:to-green-900 rounded-lg">
+                      <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-950/50 rounded-lg">
                         <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Accuracy</span>
                         <span className="font-black text-lg text-green-600 dark:text-green-400">
                           {card.accuracy}%
@@ -438,7 +438,7 @@ export default function DashboardPage() {
                       </div>
 
                       <Button
-                        className="w-full bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-500 hover:to-green-400 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold"
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 font-semibold"
                         onClick={() =>
                           router.push(`/learnings/${card.id}`)
                         }
@@ -454,10 +454,10 @@ export default function DashboardPage() {
           )}
 
           {/* Quick Actions */}
-          <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-300 bg-gradient-to-br from-blue-50/50 to-green-50/50 dark:from-slate-800/50 dark:to-slate-700/50 shadow-lg">
+          <Card className="border-2 border-dashed border-blue-300 dark:border-blue-700 hover:border-blue-500 dark:hover:border-blue-500 transition-all duration-300 bg-slate-50 dark:bg-slate-800/50 shadow-lg">
             <CardContent className="p-8">
               <div className="text-center space-y-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-green-500 shadow-lg mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 shadow-lg mb-4">
                   <Plus className="h-8 w-8 text-white" />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">Ready to Learn More?</h3>
@@ -466,7 +466,7 @@ export default function DashboardPage() {
                 </p>
                 <Button
                   size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-500 hover:to-green-400 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold"
+                  className="bg-blue-600 hover:bg-blue-500 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 font-semibold"
                   onClick={() => router.push("/learnings")}
                 >
                   Go to My Learnings

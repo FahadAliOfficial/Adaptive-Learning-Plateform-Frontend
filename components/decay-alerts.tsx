@@ -49,7 +49,7 @@ export function DecayAlerts({ alerts, onScheduleReview }: DecayAlertsProps) {
               </div>
               <Button
                 onClick={() => onScheduleReview(alert.concept_id)}
-                className="bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white shadow-lg whitespace-nowrap"
+                className="bg-orange-600 hover:bg-orange-500 text-white shadow-lg whitespace-nowrap"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule Review

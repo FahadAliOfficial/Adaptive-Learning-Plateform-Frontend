@@ -88,8 +88,8 @@ export function RecentSessions({ sessions, onPracticeAgain }: RecentSessionsProp
                 <div className={`
                   absolute left-0 top-1 w-6 h-6 rounded-full flex items-center justify-center
                   ${isPositiveGain 
-                    ? 'bg-gradient-to-br from-green-500 to-green-600' 
-                    : 'bg-gradient-to-br from-red-500 to-red-600'
+                    ? 'bg-green-600' 
+                    : 'bg-red-600'
                   }
                   shadow-lg group-hover:scale-125 transition-transform
                 `}>

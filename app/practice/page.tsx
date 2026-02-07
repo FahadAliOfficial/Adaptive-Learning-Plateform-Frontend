@@ -30,6 +30,9 @@ import {
   Box,
   Boxes
 } from "lucide-react"
+import { useAuth } from "@/lib/contexts/auth-context"
+import { getCurriculum, getTopicByMappingId, type LanguageCurriculum } from "@/lib/api/curriculum"
+import { startExamSession } from "@/lib/api/exam"
 
 // 8 Universal Concepts
 const CONCEPTS = [
@@ -79,8 +82,11 @@ const DIFFICULTY_LABELS = [
 function PracticeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState<string | null>(null)
+  const [curriculum, setCurriculum] = useState<LanguageCurriculum[]>([])
+  const [isStarting, setIsStarting] = useState(false)
 
   // Configuration state
   const [selectedConcept, setSelectedConcept] = useState<string>("")
@@ -97,6 +103,7 @@ function PracticeContent() {
         router.push('/onboarding/language')
       } else {
         setCurrentLanguage(selectedLanguage)
+        loadCurriculum()
 
         // Pre-fill from URL params
         const conceptParam = searchParams.get('concept')
@@ -112,6 +119,11 @@ function PracticeContent() {
     }
   }, [router, searchParams])
 
+  const loadCurriculum = async () => {
+    const data = await getCurriculum()
+    setCurriculum(data)
+  }
+
   const getDifficultyLabel = () => {
     if (difficulty <= 0.4) return DIFFICULTY_LABELS[0]
     if (difficulty <= 0.6) return DIFFICULTY_LABELS[1]
@@ -119,34 +131,52 @@ function PracticeContent() {
     return DIFFICULTY_LABELS[3]
   }
 
-  const handleStartPractice = () => {
+  const handleStartPractice = async () => {
     if (!selectedConcept) {
       alert("Please select a concept to practice")
       return
     }
 
-    // TODO: In production, call API to create session
-    // POST /api/sessions/create
-    // Body: { concept_id, difficulty, question_count, mode, language_id }
-    // Response: { session_id, questions }
-
-    // Generate mock session ID
-    const sessionId = `session_${Date.now()}`
-    
-    // Store session config in localStorage for test page
-    const sessionConfig = {
-      session_id: sessionId,
-      concept_id: selectedConcept,
-      concept_name: CONCEPTS.find(c => c.id === selectedConcept)?.name || "",
-      difficulty,
-      question_count: questionCount,
-      mode,
-      language_id: currentLanguage,
+    if (!currentLanguage || !user?.id) {
+      alert("Please login and select a language before starting")
+      return
     }
-    localStorage.setItem('currentSession', JSON.stringify(sessionConfig))
 
-    // Navigate to test page
-    router.push(`/test/${sessionId}`)
+    const topic = getTopicByMappingId(curriculum, currentLanguage, selectedConcept)
+    if (!topic) {
+      alert("Selected topic not found for this language")
+      return
+    }
+
+    setIsStarting(true)
+    try {
+      const response = await startExamSession({
+        user_id: user.id,
+        language_id: currentLanguage,
+        major_topic_id: topic.major_topic_id,
+        session_type: mode as "practice" | "exam" | "review"
+      })
+
+      const sessionConfig = {
+        session_id: response.session_id,
+        mapping_id: selectedConcept,
+        major_topic_id: topic.major_topic_id,
+        concept_name: topic.name,
+        difficulty,
+        question_count: questionCount,
+        mode,
+        language_id: currentLanguage
+      }
+      localStorage.setItem('currentSession', JSON.stringify(sessionConfig))
+
+      router.push(`/test/${response.session_id}`)
+    } catch (error: any) {
+      console.error("Failed to start session:", error)
+      const errorMessage = error?.data?.detail || error?.message || "Failed to start session. Please try again."
+      alert(errorMessage)
+    } finally {
+      setIsStarting(false)
+    }
   }
 
   const difficultyLabel = getDifficultyLabel()
@@ -373,11 +403,11 @@ function PracticeContent() {
             {/* Start Button */}
             <Button
               onClick={handleStartPractice}
-              disabled={!selectedConcept}
+              disabled={!selectedConcept || isStarting}
               className="w-full h-16 text-lg font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 hover:from-purple-500 hover:via-blue-500 hover:to-purple-500 text-white shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               <PlayCircle className="h-6 w-6 mr-3" />
-              Start Practice Session
+              {isStarting ? "Starting..." : "Start Practice Session"}
             </Button>
           </div>
         </main>

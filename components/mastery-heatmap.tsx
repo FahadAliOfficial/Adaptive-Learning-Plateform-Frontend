@@ -10,64 +10,64 @@ const concepts = [
     id: "UNIV_VAR",
     name: "Variables & Data Types",
     icon: Database,
-    color: "from-blue-500 to-blue-600",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-blue-600 dark:text-blue-400",
   },
   {
     id: "UNIV_COND",
     name: "Conditionals",
     icon: GitBranch,
-    color: "from-purple-500 to-purple-600",
-    bgColor: "bg-purple-50 dark:bg-purple-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-purple-600 dark:text-purple-400",
   },
   {
     id: "UNIV_LOOP",
     name: "Loops",
     icon: RefreshCw,
-    color: "from-green-500 to-green-600",
-    bgColor: "bg-green-50 dark:bg-green-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-green-600 dark:text-green-400",
   },
   {
     id: "UNIV_FUNC",
     name: "Functions",
     icon: Code,
-    color: "from-yellow-500 to-yellow-600",
-    bgColor: "bg-yellow-50 dark:bg-yellow-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-yellow-600 dark:text-yellow-400",
   },
   {
     id: "UNIV_COLL",
     name: "Collections",
     icon: Box,
-    color: "from-cyan-500 to-cyan-600",
-    bgColor: "bg-cyan-50 dark:bg-cyan-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-cyan-600 dark:text-cyan-400",
   },
   {
     id: "UNIV_ERR",
     name: "Error Handling",
     icon: AlertCircle,
-    color: "from-red-500 to-red-600",
-    bgColor: "bg-red-50 dark:bg-red-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-red-600 dark:text-red-400",
   },
   {
     id: "UNIV_OOP_BASIC",
     name: "OOP Basics",
     icon: Boxes,
-    color: "from-indigo-500 to-indigo-600",
-    bgColor: "bg-indigo-50 dark:bg-indigo-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-indigo-600 dark:text-indigo-400",
   },
   {
     id: "UNIV_OOP_ADV",
     name: "Advanced OOP",
     icon: Boxes,
-    color: "from-pink-500 to-pink-600",
-    bgColor: "bg-pink-50 dark:bg-pink-950",
+    color: "",
+    bgColor: "bg-transparent",
     textColor: "text-pink-600 dark:text-pink-400",
   },
 ]
@@ -171,16 +171,10 @@ export function MasteryHeatmap({ languageId, masteryData, onConceptClick }: Mast
               `}
               onClick={() => onConceptClick?.(concept.id)}
             >
-              {/* Background Gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${concept.color} opacity-5 group-hover:opacity-10 transition-opacity`}></div>
+              {concept.color && (
+                <div className={`absolute inset-0 ${concept.color} opacity-60 group-hover:opacity-90 transition-opacity`}></div>
+              )}
               
-              {/* Decay Indicator Badge */}
-              <div className="absolute top-3 right-3">
-                <span className={`text-xl ${decayIndicator.color}`} title={decayIndicator.label}>
-                  {decayIndicator.emoji}
-                </span>
-              </div>
-
               <CardHeader className="pb-3">
                 <div className="flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${concept.bgColor}`}>

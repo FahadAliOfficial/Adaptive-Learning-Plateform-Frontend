@@ -23,10 +23,10 @@ export function SynergyNotifications({ bonuses }: SynergyNotificationsProps) {
       {bonuses.map((bonus, index) => (
         <Alert
           key={index}
-          className="border-2 border-purple-200 dark:border-purple-900 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950"
+          className="border-2 border-purple-200 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/30"
         >
           <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg flex-shrink-0 animate-pulse">
+            <div className="h-10 w-10 rounded-full bg-purple-600 flex items-center justify-center shadow-lg flex-shrink-0 animate-pulse">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">

@@ -8,7 +8,6 @@ import { Progress } from "@/components/ui/progress"
 import {
     Trophy,
     Target,
-    TrendingDown,
     TrendingUp,
     CheckCircle2,
     XCircle,
@@ -16,196 +15,163 @@ import {
     RotateCcw,
     ChevronDown,
     ChevronUp,
-    ChevronLeft,
     AlertTriangle,
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { getExamResults, type ExamResultsResponse, type QuestionResultPayload, type QuestionOption } from "@/lib/api/exam"
 
-// Type definitions
-type TopicResult = {
-    name: string;
-    accuracy: number;
-}
-
-type QuestionResult = {
-    id: number;
-    question: string;
-    options: string[];
-    selectedAnswer: number;
-    correctAnswer: number;
-    isCorrect: boolean;
-    explanation: string;
-    error_type?: string; // NEW: Error taxonomy classification
-    error_explanation?: string; // NEW: Targeted error remediation
-}
-
-// Mock results data
-const mockResults = {
-    score: 8,
-    totalQuestions: 10,
-    accuracy: 80,
-    timeTaken: "18:34",
-    strongTopics: [
-        { name: "Variables & Data Types", accuracy: 95 },
-        { name: "Control Flow", accuracy: 90 },
-    ],
-    weakTopics: [
-        { name: "Functions", accuracy: 65 },
-        { name: "Object-Oriented Programming", accuracy: 55 },
-    ],
-    questions: [
-        {
-            id: 1,
-            question: "What is the output of the following Python code: print(2 ** 3)?",
-            options: ["5", "6", "8", "9"],
-            selectedAnswer: 2,
-            correctAnswer: 2,
-            isCorrect: true,
-            explanation: "The ** operator is used for exponentiation in Python. 2 ** 3 means 2 raised to the power of 3, which equals 8.",
-        },
-        {
-            id: 2,
-            question: "Which data type is used to store text in Python?",
-            options: ["int", "str", "float", "bool"],
-            selectedAnswer: 1,
-            correctAnswer: 1,
-            isCorrect: true,
-            explanation: "The 'str' (string) data type is used to store text in Python. Strings can be enclosed in single or double quotes.",
-        },
-        {
-            id: 3,
-            question: "What keyword is used to define a function in Python?",
-            options: ["function", "def", "func", "define"],
-            selectedAnswer: 0,
-            correctAnswer: 1,
-            isCorrect: false,
-            explanation: "The 'def' keyword is used to define a function in Python. Example: def my_function(): pass",
-            error_type: "SYNTAX_ERROR",
-            error_explanation: "Common misconception: Using JavaScript/Java syntax in Python. Python uses 'def', not 'function'.",
-        },
-        {
-            id: 4,
-            question: "Which of the following is a mutable data type in Python?",
-            options: ["tuple", "string", "list", "integer"],
-            selectedAnswer: 2,
-            correctAnswer: 2,
-            isCorrect: true,
-            explanation: "Lists are mutable, meaning their contents can be changed after creation. Tuples, strings, and integers are immutable.",
-        },
-        {
-            id: 5,
-            question: "What does the 'len()' function return?",
-            options: [
-                "The type of an object",
-                "The length of an object",
-                "The value of an object",
-                "The memory address",
-            ],
-            selectedAnswer: 1,
-            correctAnswer: 1,
-            isCorrect: true,
-            explanation: "The len() function returns the length (number of items) of an object such as a string, list, tuple, or dictionary.",
-        },
-        {
-            id: 6,
-            question: "Which operator is used for floor division in Python?",
-            options: ["/", "//", "%", "**"],
-            selectedAnswer: 0,
-            correctAnswer: 1,
-            isCorrect: false,
-            explanation: "The // operator performs floor division, which divides and rounds down to the nearest integer. The / operator performs regular division.",
-            error_type: "OFF_BY_ONE_ERROR",
-            error_explanation: "Confusing regular division (/) with floor division (//). This is a common arithmetic operator misconception.",
-        },
-        {
-            id: 7,
-            question: "What is the correct way to create a dictionary in Python?",
-            options: [
-                "dict = []",
-                "dict = ()",
-                "dict = {}",
-                "dict = <>",
-            ],
-            selectedAnswer: 2,
-            correctAnswer: 2,
-            isCorrect: true,
-            explanation: "Dictionaries are created using curly braces {}. Example: my_dict = {'key': 'value'}",
-        },
-        {
-            id: 8,
-            question: "Which method is used to add an element to the end of a list?",
-            options: ["add()", "append()", "insert()", "extend()"],
-            selectedAnswer: 1,
-            correctAnswer: 1,
-            isCorrect: true,
-            explanation: "The append() method adds a single element to the end of a list. Example: my_list.append(5)",
-        },
-        {
-            id: 9,
-            question: "What is the output of: bool(0)?",
-            options: ["True", "False", "0", "None"],
-            selectedAnswer: 1,
-            correctAnswer: 1,
-            isCorrect: true,
-            explanation: "In Python, 0 is considered False when converted to a boolean. Other 'falsy' values include empty strings, empty lists, and None.",
-        },
-        {
-            id: 10,
-            question: "Which keyword is used to create a class in Python?",
-            options: ["class", "Class", "def", "object"],
-            selectedAnswer: 1,
-            correctAnswer: 0,
-            error_type: "CASE_SENSITIVITY_ERROR",
-            error_explanation: "Python keywords are case-sensitive. 'class' (lowercase) is correct, 'Class' (uppercase) is not a keyword.",
-            isCorrect: false,
-            explanation: "The 'class' keyword (lowercase) is used to define a class in Python. Example: class MyClass: pass",
-        },
-    ],
+// Error type descriptions with actionable advice
+const ERROR_TYPE_INFO: Record<string, { 
+  title: string
+  description: string
+  advice: string
+  studyTips: string[]
+}> = {
+  LOGIC_ERRORS: {
+    title: "Logic Error",
+    description: "Your answer shows a misunderstanding of how the code logic flows or what operations are performed.",
+    advice: "Trace through the code step-by-step with sample values to understand execution order.",
+    studyTips: [
+      "Use a debugger or print statements to see variable values at each step",
+      "Draw flowcharts to visualize the logic flow",
+      "Practice reading code line-by-line before predicting output"
+    ]
+  },
+  OFF_BY_ONE_ERROR: {
+    title: "Off-by-One Error",
+    description: "Your answer is close but off by one position - often related to loop boundaries or array indexing.",
+    advice: "Remember: most loops/arrays start at 0. Check if your loop should use < or <=, and > or >=.",
+    studyTips: [
+      "Review loop range syntax: range(n) goes from 0 to n-1",
+      "Practice with small examples: what does range(3) actually produce?",
+      "Check start and end conditions carefully in your loops"
+    ]
+  },
+  INDEX_OUT_OF_BOUNDS: {
+    title: "Index Out of Bounds",
+    description: "You selected an answer that would cause accessing an array/list position that doesn't exist.",
+    advice: "Always verify that your index is within valid range: 0 to length-1.",
+    studyTips: [
+      "List with 5 items has indices 0,1,2,3,4 (not 1,2,3,4,5)",
+      "Use len() to check array size before accessing",
+      "Practice: if len(arr)=5, valid indices are 0-4"
+    ]
+  },
+  TYPE_CONFUSION: {
+    title: "Type Confusion",
+    description: "Your answer shows confusion about data types (string vs number, list vs single value, etc.).",
+    advice: "Pay attention to quotes (strings) vs no quotes (numbers), and brackets for lists/arrays.",
+    studyTips: [
+      "'5' is a string, 5 is a number - they behave differently",
+      "[1,2,3] is a list, 1 is a single number",
+      "Review type conversion: int(), str(), list()"
+    ]
+  },
+  OPERATOR_MISUSE: {
+    title: "Operator Misuse",
+    description: "You confused operators like +, *, /, %, or, and, ==, etc.",
+    advice: "Review what each operator does: + adds, * multiplies, == compares, = assigns.",
+    studyTips: [
+      "= assigns a value, == checks equality",
+      "% gives remainder (5 % 2 = 1)",
+      "// is integer division (5 // 2 = 2)"
+    ]
+  },
+  SCOPE_ERROR: {
+    title: "Scope Error",
+    description: "Your answer shows confusion about variable scope - where variables can be accessed.",
+    advice: "Variables defined inside functions/loops aren't visible outside. Global vs local scope matters.",
+    studyTips: [
+      "Variables inside {} or functions are local",
+      "Parameters are local to their function",
+      "Use 'global' keyword to modify global variables in functions"
+    ]
+  },
+  MUTABILITY_ERROR: {
+    title: "Mutability Error",
+    description: "You didn't account for whether the data type can be changed (mutable) or not (immutable).",
+    advice: "Lists are mutable (changeable), strings/tuples are immutable (can't be changed).",
+    studyTips: [
+      "Lists can be modified: arr[0] = 5 works",
+      "Strings can't: 'hello'[0] = 'H' fails",
+      "Operations on immutable types create new values"
+    ]
+  },
+  SYNTAX_MISUNDERSTANDING: {
+    title: "Syntax Misunderstanding",
+    description: "Your answer shows confusion about the language syntax or code structure.",
+    advice: "Review the basic syntax rules: colons, indentation, parentheses, brackets matter.",
+    studyTips: [
+      "Python uses indentation to define code blocks",
+      "Colons (:) start new blocks after if/for/while/def",
+      "Practice writing small code snippets by hand"
+    ]
+  }
 }
 
 function ResultsPage() {
     const router = useRouter()
     const params = useParams()
-    const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null)
-    const [results, setResults] = useState<any>(null)
+    const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
+    const [results, setResults] = useState<ExamResultsResponse | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [loadError, setLoadError] = useState<string | null>(null)
+    const [sessionConfig, setSessionConfig] = useState<{ mapping_id?: string } | null>(null)
 
-    // Load test results from localStorage
     useEffect(() => {
         if (typeof window !== 'undefined') {
-            const storedResults = localStorage.getItem('testResults')
-            if (storedResults) {
-                const parsedResults = JSON.parse(storedResults)
-                
-                // Format questions with isCorrect flag
-                const formattedQuestions = parsedResults.questions.map((q: any, index: number) => ({
-                    ...q,
-                    selectedAnswer: parsedResults.answers[index] ?? -1,
-                    isCorrect: parsedResults.answers[index] === q.correctAnswer,
-                    explanation: q.explanation || "No explanation available."
-                }))
-                
-                setResults({
-                    ...parsedResults,
-                    questions: formattedQuestions,
-                    strongTopics: [],
-                    weakTopics: [],
-                })
-            } else {
-                // Fallback to mock data if no results found
-                setResults(mockResults)
+            const storedSession = localStorage.getItem('currentSession')
+            if (storedSession) {
+                setSessionConfig(JSON.parse(storedSession))
             }
         }
-    }, [])
+
+        const sessionId = Array.isArray(params.id) ? params.id[0] : params.id
+        if (!sessionId) {
+            setLoadError('Missing session id.')
+            setIsLoading(false)
+            return
+        }
+
+        let active = true
+
+        const fetchResults = async () => {
+            setIsLoading(true)
+            setLoadError(null)
+            try {
+                const data = await getExamResults(sessionId)
+                if (active) {
+                    setResults(data)
+                }
+            } catch (error) {
+                console.error('Failed to load results:', error)
+                if (active) {
+                    setLoadError('Failed to load results. Please try again.')
+                }
+            } finally {
+                if (active) {
+                    setIsLoading(false)
+                }
+            }
+        }
+
+        fetchResults()
+
+        return () => {
+            active = false
+        }
+    }, [params.id])
 
     const handlePracticeAgain = () => {
-        if (results?.concept_id) {
-            router.push(`/practice?concept=${results.concept_id}&mode=${results.mode}`)
-        } else {
-            router.push('/practice')
+        const mode = results?.session_type || 'practice'
+        if (sessionConfig?.mapping_id) {
+            router.push(`/practice?concept=${sessionConfig.mapping_id}&mode=${mode}`)
+            return
         }
+        router.push(`/practice?mode=${mode}`)
     }
 
-    if (!results) {
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
                 <div className="text-center">
@@ -215,7 +181,44 @@ function ResultsPage() {
             </div>
         )
     }
-    const percentage = (results.score / results.totalQuestions) * 100
+
+    if (loadError || !results) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-teal-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+                <div className="text-center max-w-md">
+                    <div className="text-lg font-semibold text-slate-900 dark:text-white mb-2">Unable to load results</div>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6">
+                        {loadError || 'Please try again in a moment.'}
+                    </p>
+                    <Button onClick={() => router.push('/practice')}>
+                        Back to Practice
+                    </Button>
+                </div>
+            </div>
+        )
+    }
+
+    const totalQuestions = results.questions.length
+    const correctCount = results.questions.filter((question) => question.is_correct).length
+    const accuracyPercent = typeof results.accuracy === 'number'
+        ? results.accuracy
+        : totalQuestions
+        ? Math.round((correctCount / totalQuestions) * 100)
+        : 0
+    const percentage = accuracyPercent
+
+    const formatDuration = (seconds: number) => {
+        const mins = Math.floor(seconds / 60)
+        const secs = seconds % 60
+        return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+    }
+
+    const modeLabel = {
+        practice: 'Practice',
+        exam: 'Exam',
+        review: 'Review',
+        diagnostic: 'Diagnostic'
+    }[results.session_type] || 'Session'
 
     const getGrade = (percentage: number) => {
         if (percentage >= 90) return { grade: "A+", color: "text-[rgb(var(--secondary))]" }
@@ -244,7 +247,7 @@ function ResultsPage() {
                         <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 shadow-2xl shadow-emerald-500/50 mb-6 animate-in zoom-in duration-500">
                             <Trophy className="h-12 w-12 text-white" />
                         </div>
-                        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 bg-clip-text text-transparent animate-gradient-x">Test Completed!</h1>
+                        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 bg-clip-text text-transparent animate-gradient-x">{modeLabel} Completed!</h1>
                         <p className="text-slate-600 dark:text-slate-400 text-lg">Here's how you performed</p>
                     </div>
 
@@ -264,7 +267,7 @@ function ResultsPage() {
                     <Card className="border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50">
                         <CardContent className="p-6 text-center">
                             <div className="text-5xl font-bold mb-2">
-                                {results.score}/{results.totalQuestions}
+                                {correctCount}/{totalQuestions}
                             </div>
                             <div className="text-sm text-white/80">Score</div>
                         </CardContent>
@@ -273,7 +276,7 @@ function ResultsPage() {
                     <Card className="border-none bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/50">
                         <CardContent className="p-6 text-center">
                             <div className="text-5xl font-bold mb-2">
-                                {results.accuracy}%
+                                {accuracyPercent}%
                             </div>
                             <div className="text-sm text-white/80">Accuracy</div>
                         </CardContent>
@@ -282,7 +285,7 @@ function ResultsPage() {
                     <Card className="border-none bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/50">
                         <CardContent className="p-6 text-center">
                             <div className="text-5xl font-bold mb-2">
-                                {results.timeTaken}
+                                {formatDuration(results.time_taken_seconds)}
                             </div>
                             <div className="text-sm text-white/80">Time Taken</div>
                         </CardContent>
@@ -316,8 +319,8 @@ function ResultsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {results.strongTopics.map((topic: TopicResult, index: number) => (
-                                <div key={index} className="space-y-2">
+                            {results.strong_topics.map((topic, index) => (
+                                <div key={`${topic.name}-${index}`} className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="font-medium">{topic.name}</span>
                                         <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{topic.accuracy}%</span>
@@ -325,6 +328,11 @@ function ResultsPage() {
                                     <Progress value={topic.accuracy} className="h-2" />
                                 </div>
                             ))}
+                            {results.strong_topics.length === 0 && (
+                                <p className="text-center text-slate-600 dark:text-slate-400 py-4 text-sm">
+                                    No strong topics identified yet.
+                                </p>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -342,22 +350,39 @@ function ResultsPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
-                                {results.questions
-                                    .filter((q: QuestionResult) => !q.isCorrect && q.error_type)
-                                    .map((q: QuestionResult, index: number) => (
-                                        <div key={index} className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200 dark:border-red-900">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-red-600 text-white">
-                                                    {q.error_type}
+                            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-3">
+                                {results.error_patterns.map((pattern) => {
+                                    const errorInfo = ERROR_TYPE_INFO[pattern.error_type] || {
+                                        title: pattern.error_type.replace(/_/g, ' '),
+                                        description: "Review this concept to improve your understanding.",
+                                        advice: "Practice similar problems and review the fundamentals.",
+                                        studyTips: []
+                                    }
+                                    return (
+                                        <div key={pattern.error_type} className="p-4 bg-red-50 dark:bg-red-950/20 rounded-lg border-2 border-red-200 dark:border-red-900">
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <span className="inline-block px-3 py-1 rounded-md text-xs font-bold bg-red-600 text-white">
+                                                    {errorInfo.title}
+                                                </span>
+                                                <span className="text-sm font-bold text-red-700 dark:text-red-300">
+                                                    {pattern.count}x
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-red-800 dark:text-red-300">
-                                                {q.error_explanation}
+                                            <p className="text-sm font-medium text-red-900 dark:text-red-200 mb-2">
+                                                {errorInfo.description}
                                             </p>
+                                            <div className="bg-white dark:bg-red-950/50 p-3 rounded border border-red-200 dark:border-red-800">
+                                                <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-2">
+                                                    💡 How to improve:
+                                                </p>
+                                                <p className="text-xs text-red-700 dark:text-red-400">
+                                                    {errorInfo.advice}
+                                                </p>
+                                            </div>
                                         </div>
-                                    ))}
-                                {results.questions.filter((q: QuestionResult) => !q.isCorrect && q.error_type).length === 0 && (
+                                    )
+                                })}
+                                {results.error_patterns.length === 0 && (
                                     <p className="text-center text-slate-600 dark:text-slate-400 py-4 text-sm">
                                         No error patterns detected. Great job!
                                     </p>
@@ -381,62 +406,60 @@ function ResultsPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="max-h-[300px] overflow-y-auto pr-2 space-y-2">
-                                {/* Placeholder recommendations - these will be populated dynamically */}
-                                <a href="#" className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    <div className="font-medium text-sm text-slate-900 dark:text-white">Python Functions Tutorial</div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Learn about function definitions and parameters</div>
-                                </a>
-                                <a href="#" className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    <div className="font-medium text-sm text-slate-900 dark:text-white">OOP Concepts in Python</div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Master classes, objects, and inheritance</div>
-                                </a>
-                                <a href="#" className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    <div className="font-medium text-sm text-slate-900 dark:text-white">Python Practice Problems</div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">50+ exercises to strengthen your skills</div>
-                                </a>
-                                <a href="#" className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                                    <div className="font-medium text-sm text-slate-900 dark:text-white">Advanced Python Patterns</div>
-                                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">Design patterns and best practices</div>
-                                </a>
+                                {results.recommendations.map((rec, index) => (
+                                    <div
+                                        key={`${rec.title}-${index}`}
+                                        className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-800/60"
+                                    >
+                                        <div className="font-medium text-sm text-slate-900 dark:text-white">{rec.title}</div>
+                                        <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">{rec.description}</div>
+                                    </div>
+                                ))}
+                                {results.recommendations.length === 0 && (
+                                    <p className="text-center text-slate-600 dark:text-slate-400 py-4 text-sm">
+                                        Recommendations will appear after analysis completes.
+                                    </p>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* RL Settings */}
-                <Card className="mb-8 border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 shadow-lg">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
-                                <Target className="h-5 w-5 text-white" />
+                {(results.session_type !== 'practice' && results.session_type !== 'review') && (
+                    <Card className="mb-8 border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 shadow-lg">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
+                                <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+                                    <Target className="h-5 w-5 text-white" />
+                                </div>
+                                RL Settings
+                            </CardTitle>
+                            <CardDescription className="dark:text-slate-400">
+                                Reinforcement Learning configuration for this test
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Learning Rate</div>
+                                    <div className="text-lg font-bold text-slate-900 dark:text-white">0.001</div>
+                                </div>
+                                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Discount Factor</div>
+                                    <div className="text-lg font-bold text-slate-900 dark:text-white">0.95</div>
+                                </div>
+                                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Exploration Rate</div>
+                                    <div className="text-lg font-bold text-slate-900 dark:text-white">0.2</div>
+                                </div>
+                                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Model Accuracy</div>
+                                    <div className="text-lg font-bold text-slate-900 dark:text-white">87.5%</div>
+                                </div>
                             </div>
-                            RL Settings
-                        </CardTitle>
-                        <CardDescription className="dark:text-slate-400">
-                            Reinforcement Learning configuration for this test
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Learning Rate</div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">0.001</div>
-                            </div>
-                            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Discount Factor</div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">0.95</div>
-                            </div>
-                            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Exploration Rate</div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">0.2</div>
-                            </div>
-                            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-                                <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Model Accuracy</div>
-                                <div className="text-lg font-bold text-slate-900 dark:text-white">87.5%</div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Detailed Question Review */}
                 <Card className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-lg">
@@ -447,10 +470,10 @@ function ResultsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {results.questions.map((question: QuestionResult, index: number) => (
+                        {results.questions.map((question: QuestionResultPayload, index: number) => (
                             <Card
-                                key={question.id}
-                                className={`border-2 ${question.isCorrect
+                            key={question.q_id}
+                            className={`border-2 ${question.is_correct
                                         ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20"
                                         : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20"
                                     }`}
@@ -460,24 +483,24 @@ function ResultsPage() {
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="font-semibold">Question {index + 1}</span>
-                                                {question.isCorrect ? (
+                                                {question.is_correct ? (
                                                     <CheckCircle2 className="h-5 w-5 text-[rgb(var(--secondary))]" />
                                                 ) : (
                                                     <XCircle className="h-5 w-5 text-destructive" />
                                                 )}
                                             </div>
-                                            <p className="text-sm">{question.question}</p>
+                                            <p className="text-sm">{question.question_text}</p>
                                         </div>
                                         <Button
                                             variant="ghost"
                                             size="icon"
                                             onClick={() =>
                                                 setExpandedQuestion(
-                                                    expandedQuestion === question.id ? null : question.id
+                                                    expandedQuestion === question.q_id ? null : question.q_id
                                                 )
                                             }
                                         >
-                                            {expandedQuestion === question.id ? (
+                                            {expandedQuestion === question.q_id ? (
                                                 <ChevronUp className="h-4 w-4" />
                                             ) : (
                                                 <ChevronDown className="h-4 w-4" />
@@ -486,30 +509,30 @@ function ResultsPage() {
                                     </div>
                                 </CardHeader>
 
-                                {expandedQuestion === question.id && (
+                                {expandedQuestion === question.q_id && (
                                     <CardContent className="space-y-4 pt-0">
                                         {/* Options */}
                                         <div className="space-y-2">
-                                            {question.options.map((option, optIndex) => (
+                                            {(question.options || []).map((option: QuestionOption) => (
                                                 <div
-                                                    key={optIndex}
-                                                    className={`p-3 rounded-lg border-2 ${optIndex === question.correctAnswer
+                                                    key={option.id}
+                                                    className={`p-3 rounded-lg border-2 ${option.id === question.correct_choice
                                                             ? "border-[rgb(var(--secondary))] bg-[rgb(var(--secondary))]/5"
-                                                            : optIndex === question.selectedAnswer &&
-                                                                !question.isCorrect
+                                                            : option.id === question.selected_choice &&
+                                                                !question.is_correct
                                                                 ? "border-destructive bg-destructive/5"
                                                                 : "border-border"
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-2">
-                                                        {optIndex === question.correctAnswer && (
+                                                        {option.id === question.correct_choice && (
                                                             <CheckCircle2 className="h-4 w-4 text-[rgb(var(--secondary))]" />
                                                         )}
-                                                        {optIndex === question.selectedAnswer &&
-                                                            !question.isCorrect && (
+                                                        {option.id === question.selected_choice &&
+                                                            !question.is_correct && (
                                                                 <XCircle className="h-4 w-4 text-destructive" />
                                                             )}
-                                                        <span className="text-sm">{option}</span>
+                                                        <span className="text-sm">{option.text}</span>
                                                     </div>
                                                 </div>
                                             ))}
@@ -522,29 +545,70 @@ function ResultsPage() {
                                                 Explanation
                                             </div>
                                             <p className="text-sm text-muted-foreground">
-                                                {question.explanation}
+                                                {question.explanation || "No explanation available."}
                                             </p>
                                         </div>
 
                                         {/* Error Pattern Analysis - Only for incorrect answers */}
-                                        {!question.isCorrect && question.error_type && (
-                                            <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900 p-4 rounded-lg">
-                                                <div className="text-sm font-semibold mb-2 flex items-center gap-2 text-red-900 dark:text-red-200">
-                                                    <AlertTriangle className="h-4 w-4 text-red-600" />
-                                                    Error Pattern Detected
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="inline-block px-2 py-1 rounded text-xs font-bold bg-red-600 text-white">
-                                                            {question.error_type}
-                                                        </span>
+                                        {!question.is_correct && question.error_type && (() => {
+                                            const errorInfo = ERROR_TYPE_INFO[question.error_type] || {
+                                                title: question.error_type.replace(/_/g, ' '),
+                                                description: "Review this concept to improve your understanding.",
+                                                advice: "Practice similar problems and review the fundamentals.",
+                                                studyTips: []
+                                            }
+                                            
+                                            // Find the option they selected to show what error it represents
+                                            const selectedOption = (question.options || []).find(
+                                                (opt: QuestionOption) => opt.id === question.selected_choice
+                                            )
+                                            
+                                            return (
+                                                <div className="bg-red-50 dark:bg-red-950/30 border-2 border-red-200 dark:border-red-900 p-4 rounded-lg">
+                                                    <div className="text-sm font-semibold mb-3 flex items-center gap-2 text-red-900 dark:text-red-200">
+                                                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                                                        Why Your Answer Was Wrong
                                                     </div>
-                                                    <p className="text-sm text-red-800 dark:text-red-300">
-                                                        {question.error_explanation}
-                                                    </p>
+                                                    <div className="space-y-3">
+                                                        <div>
+                                                            <span className="inline-block px-3 py-1 rounded-md text-xs font-bold bg-red-600 text-white mb-2">
+                                                                {errorInfo.title}
+                                                            </span>
+                                                            <p className="text-sm text-red-900 dark:text-red-200 font-medium">
+                                                                {errorInfo.description}
+                                                            </p>
+                                                        </div>
+                                                        
+                                                        {selectedOption?.explanation && (
+                                                            <div className="bg-white dark:bg-red-950/50 p-3 rounded border border-red-300 dark:border-red-800">
+                                                                <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">
+                                                                    🤔 Why this answer is wrong:
+                                                                </p>
+                                                                <p className="text-xs text-red-700 dark:text-red-400">
+                                                                    {selectedOption.explanation}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded border border-blue-300 dark:border-blue-800">
+                                                            <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-2">
+                                                                💡 How to avoid this mistake:
+                                                            </p>
+                                                            <p className="text-xs text-blue-800 dark:text-blue-400 mb-2">
+                                                                {errorInfo.advice}
+                                                            </p>
+                                                            {errorInfo.studyTips.length > 0 && (
+                                                                <ul className="text-xs text-blue-700 dark:text-blue-500 space-y-1 ml-4">
+                                                                    {errorInfo.studyTips.map((tip, idx) => (
+                                                                        <li key={idx} className="list-disc">{tip}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )
+                                        })()}
                                     </CardContent>
                                 )}
                             </Card>

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, BookOpen, Settings, LogOut, X, Brain, Menu, Sparkles, User, Target } from "lucide-react"
+import { LayoutDashboard, BookOpen, Settings, LogOut, X, Brain, Menu, Sparkles, User, Target, History } from "lucide-react"
 import { Button } from "./ui/button"
 import { ThemeToggle } from "./theme-toggle"
 import { useState } from "react"
@@ -32,12 +32,20 @@ const navigation = [
     activeColor: "bg-gradient-to-r from-orange-600 to-orange-500"
   },
   {
-    name: "Analytics",
-    href: "/analytics",
-    icon: Sparkles,
+    name: "History",
+    href: "/history",
+    icon: History,
     color: "from-purple-600 to-pink-500",
     hoverColor: "hover:bg-purple-50 dark:hover:bg-purple-950",
     activeColor: "bg-gradient-to-r from-purple-600 to-pink-500"
+  },
+  {
+    name: "Analytics",
+    href: "/analytics",
+    icon: Sparkles,
+    color: "from-indigo-600 to-cyan-500",
+    hoverColor: "hover:bg-indigo-50 dark:hover:bg-indigo-950",
+    activeColor: "bg-gradient-to-r from-indigo-600 to-cyan-500"
   },
   {
     name: "My Learnings",
@@ -51,9 +59,9 @@ const navigation = [
     name: "Settings",
     href: "/settings",
     icon: Settings,
-    color: "from-purple-600 to-purple-500",
-    hoverColor: "hover:bg-purple-50 dark:hover:bg-purple-950",
-    activeColor: "bg-gradient-to-r from-purple-600 to-purple-500"
+    color: "from-slate-600 to-slate-500",
+    hoverColor: "hover:bg-slate-50 dark:hover:bg-slate-950",
+    activeColor: "bg-gradient-to-r from-slate-600 to-slate-500"
   },
 ]
 
