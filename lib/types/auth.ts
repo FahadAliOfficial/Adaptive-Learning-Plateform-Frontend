@@ -43,6 +43,7 @@ export interface LoginResponse {
   user_id: string;
   email: string;
   last_active_language: string | null;
+  is_admin: boolean;
 }
 
 /**

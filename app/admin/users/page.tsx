@@ -1,92 +1,107 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, UserCheck, UserX, Edit, Mail, Calendar, Activity, Filter } from "lucide-react"
+import { Search, UserCheck, UserX, Edit, Mail, Calendar, Activity, Filter, Loader2, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { getUsers, updateUserStatus, getUserAnalytics, type AdminUser, type AdminUserAnalytics } from "@/lib/api/admin"
+import { formatAPIError } from "@/lib/api/client"
 
 // TODO: Add role-based access control when backend supports admin roles
 export default function UserManagementPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [analytics, setAnalytics] = useState<AdminUserAnalytics | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [updatingUsers, setUpdatingUsers] = useState<Set<string>>(new Set())
 
-  // TODO: In production, fetch from API - GET /api/admin/users
-  const mockUsers = [
-    {
-      id: 1,
-      email: "alice.johnson@example.com",
-      name: "Alice Johnson",
-      status: "active",
-      language: "Python",
-      joinedAt: "2025-11-15",
-      lastActive: "2026-01-29",
-      sessionsCompleted: 47,
-      avgMastery: 72.5,
-    },
-    {
-      id: 2,
-      email: "bob.smith@example.com",
-      name: "Bob Smith",
-      status: "active",
-      language: "JavaScript",
-      joinedAt: "2025-12-03",
-      lastActive: "2026-01-30",
-      sessionsCompleted: 32,
-      avgMastery: 68.3,
-    },
-    {
-      id: 3,
-      email: "carol.white@example.com",
-      name: "Carol White",
-      status: "inactive",
-      language: "Java",
-      joinedAt: "2025-10-22",
-      lastActive: "2026-01-10",
-      sessionsCompleted: 15,
-      avgMastery: 54.2,
-    },
-    {
-      id: 4,
-      email: "david.brown@example.com",
-      name: "David Brown",
-      status: "active",
-      language: "C++",
-      joinedAt: "2026-01-05",
-      lastActive: "2026-01-30",
-      sessionsCompleted: 8,
-      avgMastery: 61.7,
-    },
-    {
-      id: 5,
-      email: "eve.davis@example.com",
-      name: "Eve Davis",
-      status: "suspended",
-      language: "Python",
-      joinedAt: "2025-09-18",
-      lastActive: "2026-01-15",
-      sessionsCompleted: 23,
-      avgMastery: 48.1,
-    },
-  ]
-
-  const filteredUsers = mockUsers.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.name.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  const handleToggleStatus = (userId: number, currentStatus: string) => {
-    // TODO: Call API - PATCH /api/admin/users/:id/status
-    console.log(`Toggle status for user ${userId}, current: ${currentStatus}`)
+  // Load users from API
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await getUsers(searchQuery || undefined, statusFilter)
+      setUsers(response.users)
+      
+      // Also load analytics
+      const analyticsData = await getUserAnalytics()
+      setAnalytics(analyticsData)
+    } catch (err) {
+      console.error('Failed to load users:', err)
+      setError(formatAPIError(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleEditUser = (userId: number) => {
+  // Load data on mount and when filters change
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadUsers()
+    }, 300) // Debounce search
+    
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, statusFilter])
+
+  // Initial load
+  useEffect(() => {
+    loadUsers()
+  }, [])
+
+  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+    try {
+      setUpdatingUsers(prev => new Set(prev).add(userId))
+      
+      // Determine new status
+      const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended'
+      
+      await updateUserStatus(userId, newStatus)
+      
+      // Refresh users list
+      await loadUsers()
+    } catch (err) {
+      console.error('Failed to update user status:', err)
+      setError(formatAPIError(err))
+    } finally {
+      setUpdatingUsers(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(userId)
+        return newSet
+      })
+    }
+  }
+
+  const handleEditUser = (userId: string) => {
     // TODO: Implement edit modal or navigate to edit page
     console.log(`Edit user ${userId}`)
+  }
+
+  // Show loading state
+  if (loading && users.length === 0) {
+    return (
+      <ProtectedRoute>
+        <div className="space-y-8">
+          <div>
+            <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-red-600 via-orange-500 to-red-600 bg-clip-text text-transparent">
+              User Management
+            </h1>
+            <p className="text-lg text-slate-600 dark:text-slate-300">
+              View and manage platform users
+            </p>
+          </div>
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="ml-2 text-slate-600">Loading users...</span>
+          </div>
+        </div>
+      </ProtectedRoute>
+    )
   }
 
   return (
@@ -102,6 +117,14 @@ export default function UserManagementPage() {
         </p>
       </div>
 
+      {/* Error Display */}
+      {error && (
+        <Alert className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950">
+          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+          <AlertDescription className="text-red-700 dark:text-red-400">{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Filters */}
       <Card className="border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <CardContent className="pt-6">
@@ -113,9 +136,10 @@ export default function UserManagementPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
+                disabled={loading}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={setStatusFilter} disabled={loading}>
               <SelectTrigger className="w-full md:w-48">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Filter by status" />
@@ -139,7 +163,11 @@ export default function UserManagementPage() {
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Active Users</p>
                 <p className="text-3xl font-black text-green-600 dark:text-green-400">
-                  {mockUsers.filter(u => u.status === "active").length}
+                  {loading ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  ) : (
+                    analytics?.active_users || users.filter(u => u.status === "active").length
+                  )}
                 </p>
               </div>
               <UserCheck className="h-12 w-12 text-green-600 dark:text-green-400" />
@@ -153,7 +181,11 @@ export default function UserManagementPage() {
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Inactive Users</p>
                 <p className="text-3xl font-black text-yellow-600 dark:text-yellow-400">
-                  {mockUsers.filter(u => u.status === "inactive").length}
+                  {loading ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  ) : (
+                    analytics?.inactive_users || users.filter(u => u.status === "inactive").length
+                  )}
                 </p>
               </div>
               <Activity className="h-12 w-12 text-yellow-600 dark:text-yellow-400" />
@@ -167,7 +199,11 @@ export default function UserManagementPage() {
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Suspended Users</p>
                 <p className="text-3xl font-black text-red-600 dark:text-red-400">
-                  {mockUsers.filter(u => u.status === "suspended").length}
+                  {loading ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  ) : (
+                    analytics?.suspended_users || users.filter(u => u.status === "suspended").length
+                  )}
                 </p>
               </div>
               <UserX className="h-12 w-12 text-red-600 dark:text-red-400" />
@@ -179,12 +215,20 @@ export default function UserManagementPage() {
       {/* Users Table */}
       <Card className="border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         <CardHeader>
-          <CardTitle className="text-2xl font-black">Users ({filteredUsers.length})</CardTitle>
+          <CardTitle className="text-2xl font-black">
+            Users ({users.length})
+            {loading && <Loader2 className="inline h-5 w-5 animate-spin ml-2" />}
+          </CardTitle>
           <CardDescription>Manage user accounts and permissions</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {filteredUsers.map((user) => (
+          {users.length === 0 && !loading ? (
+            <div className="text-center py-12">
+              <p className="text-slate-600 dark:text-slate-400">No users found.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {users.map((user) => (
               <div
                 key={user.id}
                 className="p-4 rounded-lg border-2 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all bg-slate-50 dark:bg-slate-800/50"
@@ -215,12 +259,15 @@ export default function UserManagementPage() {
                       <div className="flex items-center gap-1.5">
                         <Activity className="h-3 w-3 text-slate-500" />
                         <span className="text-slate-600 dark:text-slate-400">
-                          Last active {new Date(user.lastActive).toLocaleDateString()}
+                          {user.lastActive 
+                            ? `Last active ${new Date(user.lastActive).toLocaleDateString()}`
+                            : 'Never active'
+                          }
                         </span>
                       </div>
                       <div>
                         <span className="text-slate-600 dark:text-slate-400">
-                          Language: <span className="font-semibold text-slate-900 dark:text-white">{user.language}</span>
+                          Language: <span className="font-semibold text-slate-900 dark:text-white">{user.language || 'Not Set'}</span>
                         </span>
                       </div>
                       <div>
@@ -261,6 +308,7 @@ export default function UserManagementPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEditUser(user.id)}
+                      disabled={updatingUsers.has(user.id)}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
@@ -269,8 +317,14 @@ export default function UserManagementPage() {
                       variant={user.status === "suspended" ? "default" : "destructive"}
                       size="sm"
                       onClick={() => handleToggleStatus(user.id, user.status)}
+                      disabled={updatingUsers.has(user.id)}
                     >
-                      {user.status === "suspended" ? (
+                      {updatingUsers.has(user.id) ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Updating...
+                        </>
+                      ) : user.status === "suspended" ? (
                         <>
                           <UserCheck className="h-4 w-4 mr-2" />
                           Activate
@@ -286,7 +340,8 @@ export default function UserManagementPage() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -84,10 +84,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const userData = await authAPI.getMe();
       setUser(userData);
       
-      // Check if user needs onboarding (first time login without language set)
-      if (!userData.last_active_language) {
+      // Check if user is admin first
+      if (response.is_admin) {
+        router.push('/admin');
+      } else if (!userData.last_active_language) {
+        // Regular user needs onboarding (first time login without language set)
         router.push('/onboarding/language');
       } else {
+        // Regular user with language set - go to dashboard
         router.push('/dashboard');
       }
       
