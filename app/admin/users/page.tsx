@@ -5,10 +5,23 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search, UserCheck, UserX, Edit, Mail, Calendar, Activity, Filter, Loader2, AlertCircle } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Search, UserCheck, UserX, Edit, Mail, Calendar, Activity, Filter, Loader2, AlertCircle, Trash2, Shield } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getUsers, updateUserStatus, getUserAnalytics, type AdminUser, type AdminUserAnalytics } from "@/lib/api/admin"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { 
+  getUsers, 
+  updateUserStatus, 
+  updateUserDetails,
+  resetUserPassword,
+  deleteUser,
+  getUserAnalytics, 
+  type AdminUser, 
+  type AdminUserAnalytics,
+  type AdminUserUpdateRequest 
+} from "@/lib/api/admin"
 import { formatAPIError } from "@/lib/api/client"
 
 // TODO: Add role-based access control when backend supports admin roles
@@ -20,6 +33,29 @@ export default function UserManagementPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updatingUsers, setUpdatingUsers] = useState<Set<string>>(new Set())
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    language: "",
+    status: "active" as 'active' | 'inactive' | 'suspended'
+  })
+  const [passwordResetForm, setPasswordResetForm] = useState({ newPassword: "", confirmPassword: "" })
+  const [showPasswordReset, setShowPasswordReset] = useState(false)
+
+  const updateAnalyticsFromUsers = (nextUsers: AdminUser[]) => {
+    const activeCount = nextUsers.filter(u => u.status === "active").length
+    const inactiveCount = nextUsers.filter(u => u.status === "inactive").length
+    const suspendedCount = nextUsers.filter(u => u.status === "suspended").length
+
+    setAnalytics(prev => prev ? {
+      ...prev,
+      active_users: activeCount,
+      inactive_users: inactiveCount,
+      suspended_users: suspendedCount
+    } : prev)
+  }
 
   // Load users from API
   const loadUsers = async () => {
@@ -54,17 +90,19 @@ export default function UserManagementPage() {
     loadUsers()
   }, [])
 
-  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+  const handleStatusChange = async (userId: string, newStatus: 'active' | 'inactive' | 'suspended') => {
     try {
       setUpdatingUsers(prev => new Set(prev).add(userId))
-      
-      // Determine new status
-      const newStatus = currentStatus === 'suspended' ? 'active' : 'suspended'
-      
-      await updateUserStatus(userId, newStatus)
-      
-      // Refresh users list
-      await loadUsers()
+
+      const response = await updateUserStatus(userId, newStatus)
+      const updatedUser = response.updated_user
+
+      setUsers(prevUsers => {
+        const merged = prevUsers.map(user => user.id === userId ? { ...user, ...updatedUser } : user)
+        const filtered = statusFilter === "all" ? merged : merged.filter(user => user.status === statusFilter)
+        updateAnalyticsFromUsers(merged)
+        return filtered
+      })
     } catch (err) {
       console.error('Failed to update user status:', err)
       setError(formatAPIError(err))
@@ -77,9 +115,83 @@ export default function UserManagementPage() {
     }
   }
 
-  const handleEditUser = (userId: string) => {
-    // TODO: Implement edit modal or navigate to edit page
-    console.log(`Edit user ${userId}`)
+  const handleEditUser = (user: AdminUser) => {
+    setEditingUser(user)
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      language: user.language || "",
+      status: user.status
+    })
+    setPasswordResetForm({ newPassword: "", confirmPassword: "" })
+    setShowPasswordReset(false)
+    setEditModalOpen(true)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editingUser) return
+    
+    try {
+      setUpdatingUsers(prev => new Set(prev).add(editingUser.id))
+      
+      // Update user details
+      const updates: AdminUserUpdateRequest = {}
+      if (editForm.name !== editingUser.name) updates.name = editForm.name
+      if (editForm.language !== (editingUser.language || "")) updates.language = editForm.language
+      
+      if (Object.keys(updates).length > 0) {
+        await updateUserDetails(editingUser.id, updates)
+      }
+      
+      // Update status if changed
+      if (editForm.status !== editingUser.status) {
+        await updateUserStatus(editingUser.id, editForm.status)
+      }
+      
+      // Reset password if provided
+      if (showPasswordReset && passwordResetForm.newPassword) {
+        if (passwordResetForm.newPassword !== passwordResetForm.confirmPassword) {
+          setError("Passwords do not match")
+          return
+        }
+        await resetUserPassword(editingUser.id, passwordResetForm.newPassword)
+      }
+      
+      setEditModalOpen(false)
+      setEditingUser(null)
+      await loadUsers()
+      
+    } catch (err) {
+      console.error('Failed to update user:', err)
+      setError(formatAPIError(err))
+    } finally {
+      setUpdatingUsers(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(editingUser.id)
+        return newSet
+      })
+    }
+  }
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+      return
+    }
+    
+    try {
+      setUpdatingUsers(prev => new Set(prev).add(userId))
+      await deleteUser(userId)
+      await loadUsers()
+    } catch (err) {
+      console.error('Failed to delete user:', err)
+      setError(formatAPIError(err))
+    } finally {
+      setUpdatingUsers(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(userId)
+        return newSet
+      })
+    }
   }
 
   // Show loading state
@@ -307,33 +419,39 @@ export default function UserManagementPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleEditUser(user.id)}
+                      onClick={() => handleEditUser(user)}
                       disabled={updatingUsers.has(user.id)}
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit
                     </Button>
+                    
+                    {/* Status Action Button */}
+                                    <Select 
+                                      value={user.status} 
+                                      onValueChange={(newStatus: 'active' | 'inactive' | 'suspended') => handleStatusChange(user.id, newStatus)}
+                                      disabled={updatingUsers.has(user.id)}
+                                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="suspended">Suspended</SelectItem>
+                      </SelectContent>
+                    </Select>
+
                     <Button
-                      variant={user.status === "suspended" ? "default" : "destructive"}
+                      variant="destructive"
                       size="sm"
-                      onClick={() => handleToggleStatus(user.id, user.status)}
+                      onClick={() => handleDeleteUser(user.id, user.name)}
                       disabled={updatingUsers.has(user.id)}
                     >
                       {updatingUsers.has(user.id) ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Updating...
-                        </>
-                      ) : user.status === "suspended" ? (
-                        <>
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Activate
-                        </>
+                        <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
-                        <>
-                          <UserX className="h-4 w-4 mr-2" />
-                          Suspend
-                        </>
+                        <Trash2 className="h-4 w-4" />
                       )}
                     </Button>
                   </div>
@@ -344,6 +462,176 @@ export default function UserManagementPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit User Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+          <DialogHeader>
+        <DialogTitle className="text-2xl font-black text-slate-900 dark:text-white">Edit User: {editingUser?.name}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+        {/* Basic Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+        <Label htmlFor="edit-name" className="text-slate-700 dark:text-slate-300">Display Name</Label>
+        <Input
+          id="edit-name"
+          value={editForm.name}
+          onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+          placeholder="Enter display name"
+          className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white"
+        />
+          </div>
+          
+          <div className="space-y-2">
+        <Label htmlFor="edit-email" className="text-slate-700 dark:text-slate-300">Email Address</Label>
+        <Input
+          id="edit-email"
+          value={editForm.email}
+          disabled
+          className="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400"
+          title="Email cannot be changed for security reasons"
+        />
+          </div>
+          
+          <div className="space-y-2">
+        <Label htmlFor="edit-language" className="text-slate-700 dark:text-slate-300">Preferred Language</Label>
+        <Select value={editForm.language || "not_set"} onValueChange={(value) => setEditForm(prev => ({ ...prev, language: value === "not_set" ? "" : value }))}>
+          <SelectTrigger className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
+        <SelectValue placeholder="Select language" />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600">
+        <SelectItem value="not_set">Not Set</SelectItem>
+        <SelectItem value="python_3">Python</SelectItem>
+        <SelectItem value="javascript_es6">JavaScript</SelectItem>
+        <SelectItem value="java_17">Java</SelectItem>
+        <SelectItem value="cpp_20">C++</SelectItem>
+        <SelectItem value="go_1_21">Go</SelectItem>
+        <SelectItem value="typescript_5">TypeScript</SelectItem>
+          </SelectContent>
+        </Select>
+          </div>
+          
+          <div className="space-y-2">
+        <Label htmlFor="edit-status" className="text-slate-700 dark:text-slate-300">Account Status</Label>
+        <Select value={editForm.status} onValueChange={(value: 'active' | 'inactive' | 'suspended') => setEditForm(prev => ({ ...prev, status: value }))}>
+          <SelectTrigger className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
+        <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600">
+        <SelectItem value="active">
+          <div className="flex items-center gap-2">
+        <UserCheck className="h-4 w-4 text-green-500" />
+        Active
+          </div>
+        </SelectItem>
+        <SelectItem value="inactive">
+          <div className="flex items-center gap-2">
+        <Activity className="h-4 w-4 text-yellow-500" />
+        Inactive
+          </div>
+        </SelectItem>
+        <SelectItem value="suspended">
+          <div className="flex items-center gap-2">
+        <UserX className="h-4 w-4 text-red-500" />
+        Suspended
+          </div>
+        </SelectItem>
+          </SelectContent>
+        </Select>
+          </div>
+        </div>
+        
+        {/* User Statistics */}
+        <div className="grid grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600">
+          <div className="text-center">
+        <p className="text-2xl font-bold text-slate-900 dark:text-white">{editingUser?.sessionsCompleted}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Sessions</p>
+          </div>
+          <div className="text-center">
+        <p className="text-2xl font-bold text-slate-900 dark:text-white">{editingUser?.avgMastery}%</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Avg Mastery</p>
+          </div>
+          <div className="text-center">
+        <p className="text-2xl font-bold text-slate-900 dark:text-white">
+          {editingUser?.joinedAt ? new Date(editingUser.joinedAt).toLocaleDateString() : 'N/A'}
+        </p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">Joined</p>
+          </div>
+        </div>
+        
+        {/* Password Reset Section */}
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-4">
+          <div className="flex items-center gap-2 mb-4">
+        <Shield className="h-5 w-5 text-red-500" />
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Password Management</h3>
+          </div>
+          
+          <Button
+        type="button"
+        variant={showPasswordReset ? "secondary" : "outline"}
+        onClick={() => setShowPasswordReset(!showPasswordReset)}
+        className="mb-4 bg-white dark:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600"
+          >
+        {showPasswordReset ? 'Cancel Password Reset' : 'Reset User Password'}
+          </Button>
+          
+          {showPasswordReset && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-900">
+          <div className="space-y-2">
+        <Label htmlFor="new-password" className="text-slate-700 dark:text-slate-300">New Password</Label>
+        <Input
+          id="new-password"
+          type="password"
+          value={passwordResetForm.newPassword}
+          onChange={(e) => setPasswordResetForm(prev => ({ ...prev, newPassword: e.target.value }))}
+          placeholder="Enter new password"
+          className="bg-white dark:bg-slate-700 border-red-200 dark:border-red-900 text-slate-900 dark:text-white"
+        />
+          </div>
+          <div className="space-y-2">
+        <Label htmlFor="confirm-password" className="text-slate-700 dark:text-slate-300">Confirm Password</Label>
+        <Input
+          id="confirm-password"
+          type="password"
+          value={passwordResetForm.confirmPassword}
+          onChange={(e) => setPasswordResetForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+          placeholder="Confirm new password"
+          className="bg-white dark:bg-slate-700 border-red-200 dark:border-red-900 text-slate-900 dark:text-white"
+        />
+          </div>
+          {passwordResetForm.newPassword && passwordResetForm.confirmPassword && 
+           passwordResetForm.newPassword !== passwordResetForm.confirmPassword && (
+        <div className="col-span-full">
+          <Alert className="border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/50">
+        <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+        <AlertDescription className="text-red-700 dark:text-red-400">Passwords do not match</AlertDescription>
+          </Alert>
+        </div>
+          )}
+        </div>
+          )}
+        </div>
+          </div>
+          
+          <DialogFooter>
+        <Button variant="outline" onClick={() => setEditModalOpen(false)} className="bg-white dark:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600">
+          Cancel
+        </Button>
+        <Button onClick={handleSaveEdit} disabled={updatingUsers.has(editingUser?.id || '')} className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 text-white">
+          {updatingUsers.has(editingUser?.id || '') ? (
+        <>
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          Saving...
+        </>
+          ) : (
+        'Save Changes'
+          )}
+        </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </ProtectedRoute>
   )

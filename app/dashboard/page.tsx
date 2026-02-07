@@ -30,6 +30,7 @@ const difficulties = ["Easy", "Medium", "Hard"]
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState<string | null>(null)
   const [learningCards, setLearningCards] = useState<any[]>([])
@@ -47,11 +48,20 @@ export default function DashboardPage() {
       // TODO: In production, fetch from API - GET /api/user/profile
       // Expected response: { user_id, email, language_id, languages_learning[] }
       
-      if (!selectedLanguage) {
+      // If user has language in their profile but not in localStorage, sync it
+      if (!selectedLanguage && user?.last_active_language) {
+        localStorage.setItem('selectedLanguage', user.last_active_language)
+        setCurrentLanguage(user.last_active_language)
+        return // Don't redirect, just set the language
+      }
+      
+      if (!selectedLanguage && !user?.last_active_language) {
         // No language selected, redirect to onboarding
         router.push('/onboarding/language')
       } else {
-        setCurrentLanguage(selectedLanguage)
+        // Use localStorage language or fall back to user's profile language
+        const languageToUse = selectedLanguage || user?.last_active_language || null
+        setCurrentLanguage(languageToUse)
         
         // Check if learning card exists for this language
         const existingCards = localStorage.getItem('learningCards')
@@ -59,10 +69,10 @@ export default function DashboardPage() {
           setLearningCards(JSON.parse(existingCards))
         } else {
           // Create initial learning card for selected language
-          const langData = languageMap[selectedLanguage]
+          const langData = languageMap[languageToUse || '']
           const initialCard = {
             id: 1,
-            language_id: selectedLanguage,
+            language_id: languageToUse,
             language: langData?.name || "Unknown",
             difficulty: 0.5, // Medium difficulty (0.0-1.0 scale)
             progress: 0,
@@ -75,7 +85,7 @@ export default function DashboardPage() {
         }
       }
     }
-  }, [router])
+  }, [router, user])
 
   // TODO: In production, fetch from API - POST /api/state-vector
   // Mock mastery data for current language

@@ -51,6 +51,39 @@ export interface AdminUserStatusUpdateResponse {
 }
 
 /**
+ * Request to update user details
+ */
+export interface AdminUserUpdateRequest {
+  name?: string;
+  language?: string;
+  email?: string;
+}
+
+/**
+ * Response after updating user details
+ */
+export interface AdminUserUpdateResponse {
+  success: boolean;
+  message: string;
+  updated_user: AdminUser;
+}
+
+/**
+ * Request to reset user password
+ */
+export interface AdminPasswordResetRequest {
+  new_password: string;
+}
+
+/**
+ * Response after password reset
+ */
+export interface AdminPasswordResetResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
  * Admin analytics data
  */
 export interface AdminUserAnalytics {
@@ -101,6 +134,61 @@ export async function updateUserStatus(
     {
       method: 'PATCH',
       body: JSON.stringify({ status: newStatus }),
+    }
+  );
+}
+
+/**
+ * Update user details
+ * 
+ * @param userId - User ID to update
+ * @param updates - User details to update
+ * @returns Updated user data
+ */
+export async function updateUserDetails(
+  userId: string,
+  updates: AdminUserUpdateRequest
+): Promise<AdminUserUpdateResponse> {
+  return apiClient<AdminUserUpdateResponse>(
+    `/api/admin/users/${userId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    }
+  );
+}
+
+/**
+ * Reset user password (admin only)
+ * 
+ * @param userId - User ID to reset password for
+ * @param newPassword - New password to set
+ * @returns Success response
+ */
+export async function resetUserPassword(
+  userId: string,
+  newPassword: string
+): Promise<AdminPasswordResetResponse> {
+  return apiClient<AdminPasswordResetResponse>(
+    `/api/admin/users/${userId}/reset-password`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ new_password: newPassword }),
+    }
+  );
+}
+
+/**
+ * Delete user account (admin only)
+ * 
+ * @param userId - User ID to delete
+ * @returns Success response
+ */
+export async function deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
+  return apiClient<{ success: boolean; message: string }>(
+    `/api/admin/users/${userId}`,
+    {
+      method: 'DELETE',
     }
   );
 }

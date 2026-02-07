@@ -32,6 +32,10 @@ export default function LoginPage() {
 
   const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
 
+  const accountStatus = typeof authError === 'string' && authError.startsWith('ACCOUNT_STATUS:')
+    ? authError.split(':')[1]
+    : null
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -109,7 +113,23 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             {/* Error Alert */}
-            {(authError || Object.keys(validationErrors).length > 0) && (
+            {accountStatus && (
+              <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    {accountStatus === 'suspended'
+                      ? 'Your account is suspended.'
+                      : 'Your account is inactive.'}
+                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
+                    Please contact the admins to restore access. fahadaliajizansar@gmail.com
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {(!accountStatus && (authError || Object.keys(validationErrors).length > 0)) && (
               <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">

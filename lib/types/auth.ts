@@ -44,6 +44,7 @@ export interface LoginResponse {
   email: string;
   last_active_language: string | null;
   is_admin: boolean;
+  status: 'active' | 'inactive' | 'suspended';
 }
 
 /**

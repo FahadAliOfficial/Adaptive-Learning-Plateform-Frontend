@@ -84,6 +84,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const userData = await authAPI.getMe();
       setUser(userData);
       
+      // Sync language preference with localStorage
+      if (userData.last_active_language) {
+        localStorage.setItem('selectedLanguage', userData.last_active_language);
+      }
+      
       // Check if user is admin first
       if (response.is_admin) {
         router.push('/admin');
