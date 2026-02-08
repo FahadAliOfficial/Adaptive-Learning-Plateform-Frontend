@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Clock, ChevronLeft, ChevronRight, Flag } from "lucide-react"
+import { Clock, ChevronLeft, ChevronRight, Flag, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/contexts/auth-context"
-import { selectQuestions, submitExam, type SelectedQuestion, type QuestionOption } from "@/lib/api/exam"
+import { selectQuestions, submitExam, pollNewQuestions, closeQuestionSession, type SelectedQuestion, type QuestionOption } from "@/lib/api/exam"
 
 
 type QuestionItem = SelectedQuestion
@@ -33,6 +33,12 @@ function TestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const hasSubmittedRef = useRef(false)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [moreQuestionsLoading, setMoreQuestionsLoading] = useState(false)
+  const [totalRequested, setTotalRequested] = useState(0)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const pollingStartTime = useRef<number | null>(null)
+  const currentQuestionCount = useRef<number>(0)
 
   // Load session config from localStorage and fetch questions
   useEffect(() => {
@@ -48,41 +54,208 @@ function TestPage() {
     setSessionConfig(config)
 
     const fetchQuestions = async () => {
-      if (!user?.id) return
+      if (!user?.id || !config?.session_id) return
 
       setIsLoading(true)
       setLoadError(null)
       try {
         const response = await selectQuestions({
           user_id: user.id,
+          session_id: config.session_id,
           language_id: config.language_id,
           mapping_id: config.mapping_id,
           target_difficulty: config.difficulty,
           count: config.question_count,
           difficulty_tolerance: 0.1,
           mode: config.mode,
-          seen_ratio: config.mode === 'practice' ? 0.4 : config.mode === 'review' ? 0.5 : 0
+          seen_ratio: config.mode === 'practice' ? 0.4 : config.mode === 'review' ? 0.2 : 0
         })
 
+        setTotalRequested(response.total_requested)
+
+        console.log(`📊 Initial response: ${response.questions.length} questions, more_loading: ${response.more_questions_loading}`)
+
+        // If more questions are loading, show generating screen and start polling
+        if (response.more_questions_loading) {
+          console.log('🔄 Questions are being generated, starting polling...')
+          setIsGenerating(true)
+          setIsLoading(false)
+          
+          // Start with whatever questions we have (even if 0)
+          if (response.questions.length > 0) {
+            setQuestions(response.questions)
+            currentQuestionCount.current = response.questions.length // Update ref
+            setSessionStartedAt(Date.now())
+            
+            // Adjust timer based on mode
+            if (config.mode === 'exam') {
+              setTimeLeft(config.question_count * 90)
+            } else {
+              setTimeLeft(config.question_count * 180)
+            }
+          }
+          
+          // Start aggressive polling
+          setMoreQuestionsLoading(true)
+          startPolling(config.session_id)
+          return
+        }
+
+        // No more questions loading - if we have 0, show error
+        if (response.questions.length === 0) {
+          setIsGenerating(false)
+          setLoadError('No questions available for this topic yet. Please try again later.')
+          setIsLoading(false)
+          return
+        }
+
+        // Success - we have questions and no more are loading
         setQuestions(response.questions)
+        currentQuestionCount.current = response.questions.length // Update ref
         setSessionStartedAt(Date.now())
+        setIsGenerating(false)
+        setIsLoading(false)
 
         // Adjust timer based on mode
         if (config.mode === 'exam') {
-          setTimeLeft(config.question_count * 90) // 1.5 minutes per question
+          setTimeLeft(config.question_count * 90)
         } else {
-          setTimeLeft(config.question_count * 180) // 3 minutes per question for practice/review
+          setTimeLeft(config.question_count * 180)
         }
       } catch (error) {
         console.error('Failed to fetch questions:', error)
         setQuestions([])
+        currentQuestionCount.current = 0 // Update ref
         setLoadError('Unable to load questions right now. Please try again.')
       } finally {
         setIsLoading(false)
       }
     }
 
+    const startPolling = (sessionId: string) => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+
+      pollingStartTime.current = Date.now()
+      let pollCount = 0
+      const maxPolls = 40 // Poll for up to 80 seconds (40 × 2s)
+      const minWaitMs = 15000 // Wait at least 15 seconds before considering stopping
+      const aggressiveWaitMs = 30000 // If we have 0 questions, wait at least 30 seconds
+
+      pollingIntervalRef.current = setInterval(async () => {
+        pollCount++
+        const elapsedMs = Date.now() - (pollingStartTime.current || 0)
+        
+        try {
+          const response = await pollNewQuestions(sessionId)
+          
+          if (response.questions.length > 0) {
+            // Got new questions!
+            
+            setQuestions(prev => {
+              const newQuestions = [...prev, ...response.questions]
+              currentQuestionCount.current = newQuestions.length // Update ref
+              
+              // If this is the first batch, initialize the exam
+              if (prev.length === 0) {
+                setSessionStartedAt(Date.now())
+                setIsGenerating(false)
+                
+                // Adjust timer
+                if (sessionConfig?.mode === 'exam') {
+                  setTimeLeft(response.total_requested * 90)
+                } else {
+                  setTimeLeft(response.total_requested * 180)
+                }
+              }
+              
+              console.log(`✅ Added ${response.questions.length} new questions (total: ${newQuestions.length}/${response.total_requested})`)
+              return newQuestions
+            })
+          }
+
+          // Check current question count from ref (not stale state!)
+          const questionCount = currentQuestionCount.current
+
+          // Stop polling if backend says no more questions are loading
+          if (!response.more_questions_loading) {
+            console.log(`⏹️ Backend reports no more questions loading. Poll: ${pollCount}, elapsed: ${elapsedMs}ms, questions: ${questionCount}`)
+            
+            // If we have 0 questions, be VERY aggressive - wait full 30 seconds minimum
+            if (questionCount === 0 && elapsedMs < aggressiveWaitMs) {
+              console.log(`⏳ No questions yet, continuing to poll... (${aggressiveWaitMs - elapsedMs}ms remaining)`)
+              return
+            }
+            
+            // If we have some questions but not all, wait the minimum time
+            if (questionCount > 0 && questionCount < response.total_requested && elapsedMs < minWaitMs) {
+              console.log(`⏳ Waiting for more questions... (${minWaitMs - elapsedMs}ms remaining)`)
+              return
+            }
+            
+            // OK to stop now
+            setMoreQuestionsLoading(false)
+            setIsGenerating(false)
+            
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current)
+              pollingIntervalRef.current = null
+            }
+            
+            // Show error only if we never received any questions
+            if (questionCount === 0) {
+              setLoadError('No questions were generated for this topic. The AI may be having difficulty creating valid questions. Please try again or choose a different topic.')
+            }
+            return
+          }
+
+          // Timeout after max polls
+          if (pollCount >= maxPolls) {
+            console.log(`⏱️ Polling timeout after ${pollCount} attempts (${elapsedMs}ms)`)
+            setMoreQuestionsLoading(false)
+            setIsGenerating(false)
+            
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current)
+              pollingIntervalRef.current = null
+            }
+            
+            setQuestions(prev => {
+              if (prev.length === 0) {
+                setLoadError('Question generation is taking longer than expected. Please try again.')
+              } else {
+                // We have some questions, continue with what we have
+                console.log(`✅ Continuing with ${prev.length} questions (timeout reached)`)
+              }
+              return prev
+            })
+          }
+        } catch (error) {
+          console.error('Polling error:', error)
+          // Continue polling even on error, unless we've exceeded max polls
+          if (pollCount >= maxPolls) {
+            setMoreQuestionsLoading(false)
+            setIsGenerating(false)
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current)
+              pollingIntervalRef.current = null
+            }
+          }
+        }
+      }, 2000) // Poll every 2 seconds
+    }
+
     fetchQuestions()
+
+    // Cleanup polling on unmount (but don't delete session yet - it's needed for polling)
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+      // Don't delete session here - it will be deleted on actual navigation away
+      // (Fast Refresh would trigger this cleanup and break polling)
+    }
   }, [router, user?.id])
 
   // Timer + per-question time tracking
@@ -196,6 +369,11 @@ function TestPage() {
         total_time_seconds: totalTimeSeconds
       })
 
+      // Clean up question session after successful submission
+      if (sessionConfig?.session_id) {
+        closeQuestionSession(sessionConfig.session_id).catch(console.error)
+      }
+
       router.push(`/results/${params.id}`)
     } catch (error: any) {
       console.error('Failed to submit exam:', error)
@@ -229,6 +407,31 @@ function TestPage() {
     )
   }
 
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-6"></div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+            {questions.length > 0 ? 'Loading More Questions...' : 'Generating Questions...'}
+          </div>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">
+            {questions.length > 0 
+              ? `You can start answering! More questions are being generated in the background.`
+              : `AI is creating fresh questions for you. This usually takes 5-15 seconds.`
+            }
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-500">
+            {questions.length > 0 
+              ? `${questions.length} of ${totalRequested} questions ready`
+              : 'Waiting for first question...'
+            }
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (loadError || !questions.length) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
@@ -237,9 +440,27 @@ function TestPage() {
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             {loadError || 'We could not find questions for this session.'}
           </p>
-          <Button onClick={() => router.push('/practice')}>
-            Back to Practice
-          </Button>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => {
+              if (sessionConfig?.session_id) {
+                closeQuestionSession(sessionConfig.session_id).catch(console.error)
+              }
+              router.push('/practice')
+            }}>
+              Back to Practice
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                if (sessionConfig?.session_id) {
+                  closeQuestionSession(sessionConfig.session_id).catch(console.error)
+                }
+                window.location.reload()
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
         </div>
       </div>
     )
@@ -280,6 +501,14 @@ function TestPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Loading More Questions Indicator */}
+          {moreQuestionsLoading && (
+            <div className="flex items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-400 bg-blue-50 dark:bg-blue-950/30 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-900">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading more questions... ({questions.length}/{totalRequested})</span>
+            </div>
+          )}
         </div>
 
         {/* Two Column Layout */}

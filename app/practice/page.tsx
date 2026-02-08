@@ -152,14 +152,24 @@ function PracticeContent() {
       return
     }
 
+    console.log('🔍 Starting session with:', {
+      topic,
+      major_topic_id: topic.major_topic_id,
+      language_id: currentLanguage,
+      mode
+    })
+
     setIsStarting(true)
     try {
-      const response = await startExamSession({
+      const payload = {
         user_id: user.id,
         language_id: currentLanguage,
         major_topic_id: topic.major_topic_id,
         session_type: mode as "practice" | "exam" | "review"
-      })
+      }
+      console.log('📤 Sending to /api/exam/start:', payload)
+      
+      const response = await startExamSession(payload)
 
       const sessionConfig = {
         session_id: response.session_id,
@@ -175,7 +185,12 @@ function PracticeContent() {
 
       router.push(`/test/${response.session_id}`)
     } catch (error: any) {
-      console.error("Failed to start session:", error)
+      console.error("❌ Failed to start session:", error)
+      console.error("Error details:", {
+        status: error?.status,
+        data: error?.data,
+        message: error?.message
+      })
       const errorMessage = error?.data?.detail || error?.message || "Failed to start session. Please try again."
       alert(errorMessage)
     } finally {

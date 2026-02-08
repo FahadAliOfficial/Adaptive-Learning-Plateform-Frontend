@@ -134,14 +134,23 @@ export default function QuestionBankPage() {
   }
 
   // Refetch data when filters change or tab switches (but not on initial mount)
+  // Skip refetch during active generation to reduce API spam
   useEffect(() => {
-    // Skip initial mount (data already loaded above)
+    // Skip during active generation (polling handles updates)
+    if (generationProgress?.active) {
+      console.log('⏸️ Skipping tab/filter refresh during active generation')
+      return
+    }
+    
+    // Fetch data for active tab only
     if (activeTab === "all") {
       fetchAllQuestions()
     } else if (activeTab === "pending") {
       fetchPendingQuestions()
+    } else if (activeTab === "low-quality") {
+      fetchLowQualityQuestions()
     }
-  }, [activeTab, filters])
+  }, [activeTab, filters, generationProgress?.active])
 
   // Close notifications on click outside
   useEffect(() => {
@@ -164,12 +173,29 @@ export default function QuestionBankPage() {
   useEffect(() => {
     if (!generationProgress?.active) return
 
+    let pollCount = 0
+    const MAX_POLLS = 40 // Max 2 minutes at 3s intervals
+
+    console.log('🔄 Starting generation polling (optimized batch mode)')
+
     const interval = setInterval(async () => {
-      // Refresh all stats for real-time updates and get fresh counts
+      pollCount++
+
+      // Safety cutoff - stop polling after max attempts
+      if (pollCount > MAX_POLLS) {
+        console.warn('⏱️ Generation polling timeout - stopping auto-refresh')
+        setGenerationProgress(null)
+        setGenerating(false)
+        return
+      }
+
+      console.log(`📊 Poll ${pollCount}/${MAX_POLLS} - Checking generation progress...`)
+
+      // OPTIMIZED: Only fetch what we need during generation
+      // Don't fetch low-quality questions during polling (not needed for progress tracking)
       const [allQuestionsResponse, pendingResponse] = await Promise.all([
         getAllQuestions(filters),
-        getPendingQuestions(filters.language_id, filters.mapping_id, 50),
-        fetchLowQualityQuestions()
+        getPendingQuestions(filters.language_id, filters.mapping_id, 50)
       ])
 
       // Update counts from responses
@@ -180,6 +206,8 @@ export default function QuestionBankPage() {
       // Calculate generated count using total questions (includes auto-approved + pending)
       const newGenerated = currentTotalCount - generationProgress.initialTotalCount
       
+      console.log(`✅ Generated: ${newGenerated}/${generationProgress.total} questions`)
+      
       setGenerationProgress(prev => prev ? { 
         ...prev, 
         generated: Math.max(0, newGenerated) // Ensure non-negative
@@ -187,9 +215,14 @@ export default function QuestionBankPage() {
 
       // Check if generation is complete
       const elapsed = Date.now() - (generationProgress as any).startTime
-      const estimatedTime = generationProgress.total * 4000 // 4 seconds per question
+      const estimatedTime = generationProgress.total * 300 // 0.3s per question (batch mode)
       
-      if (elapsed > estimatedTime + 10000) {
+      if (elapsed > estimatedTime + 5000) { // Wait 5s after estimated time
+        console.log('✨ Generation complete - stopping polling')
+        
+        // Final fetch to get accurate counts
+        await fetchLowQualityQuestions(true)
+        
         // Use the fresh total count for final calculation (includes auto-approved)
         const actualGenerated = Math.max(0, currentTotalCount - generationProgress.initialTotalCount)
         const failed = generationProgress.total - actualGenerated
@@ -214,10 +247,13 @@ export default function QuestionBankPage() {
           reviewMessage
         )
       }
-    }, 3000) // Refresh every 3 seconds
+    }, 3000) // Poll every 3 seconds during active generation
 
-    return () => clearInterval(interval)
-  }, [generationProgress, activeTab, filters])
+    return () => {
+      console.log('🛑 Cleaning up generation polling interval')
+      clearInterval(interval)
+    }
+  }, [generationProgress?.active]) // Only depend on active state
 
   const fetchAllQuestions = async (skipLoading = false) => {
     // Only show loading on initial/manual fetch, not during auto-refresh or user actions
@@ -282,12 +318,16 @@ export default function QuestionBankPage() {
     
     try {
       await deleteQuestion(questionId)
-      // Refresh current view without loading state to prevent scroll reset
-      if (activeTab === "all") fetchAllQuestions(true)
-      else if (activeTab === "low-quality") fetchLowQualityQuestions(true)
-      fetchAllQuestions(true) // Update counts
-      fetchPendingQuestions(true)
-      fetchLowQualityQuestions(true)
+      // Refresh only current tab and total counts
+      if (activeTab === "all") {
+        fetchAllQuestions(true)
+      } else if (activeTab === "pending") {
+        fetchPendingQuestions(true)
+        fetchAllQuestions(true) // Update total count
+      } else if (activeTab === "low-quality") {
+        fetchLowQualityQuestions(true)
+        fetchAllQuestions(true) // Update total count
+      }
     } catch (error) {
       console.error("Failed to delete question:", error)
       alert("Failed to delete question")
@@ -297,9 +337,9 @@ export default function QuestionBankPage() {
   const handleApprove = async (questionId: string) => {
     try {
       await approveQuestion(questionId)
+      // Only refresh pending tab and total counts
       fetchPendingQuestions(true) // Skip loading to prevent scroll reset
-      fetchAllQuestions(true)
-      fetchLowQualityQuestions(true)
+      fetchAllQuestions(true) // Update verified/unverified counts
     } catch (error) {
       console.error("Failed to approve question:", error)
       alert("Failed to approve question")
@@ -313,10 +353,9 @@ export default function QuestionBankPage() {
     
     try {
       await rejectQuestion(questionId)
+      // Only refresh pending tab and total counts
       fetchPendingQuestions(true) // Skip loading to prevent scroll reset
-      fetchAllQuestions(true)
-      fetchLowQualityQuestions(true)
-      fetchPendingQuestions()
+      fetchAllQuestions(true) // Update total count
     } catch (error) {
       console.error("Failed to reject question:", error)
       alert("Failed to reject question")
@@ -345,9 +384,9 @@ export default function QuestionBankPage() {
         action: "approve"
       })
       setSelectedQuestions(new Set())
-      fetchAllQuestions(true) // Skip loading to prevent scroll reset
+      // Only refresh pending tab and counts
       fetchPendingQuestions(true)
-      fetchLowQualityQuestions(true)
+      fetchAllQuestions(true)
     } catch (error) {
       console.error("Failed to bulk approve:", error)
       alert("Failed to bulk approve questions")
@@ -364,9 +403,16 @@ export default function QuestionBankPage() {
         action: "delete"
       })
       setSelectedQuestions(new Set())
-      fetchAllQuestions(true) // Skip loading to prevent scroll reset
-      fetchPendingQuestions(true)
-      fetchLowQualityQuestions(true)
+      // Refresh current tab and counts
+      if (activeTab === "all") {
+        fetchAllQuestions(true)
+      } else if (activeTab === "pending") {
+        fetchPendingQuestions(true)
+        fetchAllQuestions(true)
+      } else if (activeTab === "low-quality") {
+        fetchLowQualityQuestions(true)
+        fetchAllQuestions(true)
+      }
     } catch (error) {
       console.error("Failed to bulk delete:", error)
       alert("Failed to bulk delete questions")
@@ -382,6 +428,9 @@ export default function QuestionBankPage() {
     setGenerating(true)
     try {
       const response = await generateQuestions(genForm)
+      
+      console.log(`🚀 Generation started: ${genForm.count} questions (Task: ${response.task_id.slice(0, 8)})`)
+      console.log(`⏱️ Estimated time: ${response.estimated_time_seconds}s (batch mode)`)
       
       // Set generation progress tracker (track total count for auto-approved + pending)
       setGenerationProgress({

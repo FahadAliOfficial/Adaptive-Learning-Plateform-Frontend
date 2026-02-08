@@ -51,6 +51,7 @@ export interface SelectedQuestion {
 
 export interface SelectQuestionsRequest {
   user_id: string
+  session_id: string
   language_id: string
   mapping_id: string
   target_difficulty: number
@@ -63,6 +64,8 @@ export interface SelectQuestionsRequest {
 export interface SelectQuestionsResponse {
   questions: SelectedQuestion[]
   total_selected: number
+  total_requested: number
+  more_questions_loading: boolean
   warehouse_status: Record<string, any>
 }
 
@@ -125,6 +128,19 @@ export async function startExamSession(request: ExamStartRequest): Promise<ExamS
 
 export async function selectQuestions(request: SelectQuestionsRequest): Promise<SelectQuestionsResponse> {
   return post<SelectQuestionsResponse>('/question-bank/select', request)
+}
+
+export async function pollNewQuestions(sessionId: string): Promise<SelectQuestionsResponse> {
+  return get<SelectQuestionsResponse>(`/question-bank/poll/${sessionId}`)
+}
+
+export async function closeQuestionSession(sessionId: string): Promise<void> {
+  await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/question-bank/session/${sessionId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+    }
+  })
 }
 
 export async function submitExam(request: ExamSubmissionPayload): Promise<ExamSubmissionResponse> {
