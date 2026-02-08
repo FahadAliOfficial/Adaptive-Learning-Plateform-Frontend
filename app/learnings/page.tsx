@@ -112,50 +112,53 @@ function LearningsPage() {
 
           {/* Summary Stats */}
           <div className="grid gap-6 md:grid-cols-3 mb-8">
-            <Card className="border-none bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50">
+            <Card className="relative overflow-hidden border-2 border-green-100 dark:border-green-900/50 hover:border-green-500 dark:hover:border-green-400 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Active Paths</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-white/20 flex items-center justify-center">
+                <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Active Paths</CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
                   <BookOpen className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{portfolio.length}</div>
-                <p className="text-sm text-white/80 mt-1">
+                <div className="text-3xl font-black text-green-600 dark:text-green-400">{portfolio.length}</div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   {portfolio.length === 1 ? 'Language' : 'Languages'} learning
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border-none bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50">
+            <Card className="relative overflow-hidden border-2 border-blue-100 dark:border-blue-900/50 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Total Progress</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-white/20 flex items-center justify-center">
+                <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Total Progress</CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">
+                <div className="text-3xl font-black text-blue-600 dark:text-blue-400">
                   {portfolio.reduce((acc, lang) => acc + lang.topics_completed, 0)}
                 </div>
-                <p className="text-sm text-white/80 mt-1">Topics completed</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Topics completed</p>
               </CardContent>
             </Card>
 
-            <Card className="border-none bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg shadow-purple-500/50">
+            <Card className="relative overflow-hidden border-2 border-purple-100 dark:border-purple-900/50 hover:border-purple-500 dark:hover:border-purple-400 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-bl-full"></div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-white/90">Avg Accuracy</CardTitle>
-                <div className="h-10 w-10 rounded-lg bg-white/20 flex items-center justify-center">
+                <CardTitle className="text-sm font-medium text-slate-700 dark:text-slate-300">Avg Accuracy</CardTitle>
+                <div className="h-10 w-10 rounded-lg bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">
+                <div className="text-3xl font-black text-purple-600 dark:text-purple-400">
                   {portfolio.length > 0
                     ? Math.round(portfolio.reduce((acc, lang) => acc + lang.avg_accuracy, 0) / portfolio.length)
                     : 0}%
                 </div>
-                <p className="text-sm text-white/80 mt-1">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Across all paths
                 </p>
               </CardContent>

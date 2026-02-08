@@ -154,58 +154,70 @@ function HistoryPage() {
 
           {/* Stats Cards */}
           <div className="grid md:grid-cols-4 gap-4 mb-6">
-            <Card className="border-2 border-blue-200 dark:border-blue-800">
+            <Card className="relative overflow-hidden border-2 border-blue-100 dark:border-blue-900/50 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-blue-500/10 rounded-bl-full"></div>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Total Sessions</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{totalCount}</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Total Sessions</p>
+                    <p className="text-3xl font-black text-blue-600 dark:text-blue-400">{totalCount}</p>
                   </div>
-                  <Trophy className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                  <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                    <Trophy className="h-5 w-5 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-green-200 dark:border-green-800">
+            <Card className="relative overflow-hidden border-2 border-green-100 dark:border-green-900/50 hover:border-green-500 dark:hover:border-green-400 transition-all duration-300 hover:shadow-xl hover:shadow-green-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-green-500/10 rounded-bl-full"></div>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Accuracy</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Avg. Accuracy</p>
+                    <p className="text-3xl font-black text-green-600 dark:text-green-400">
                       {sessions.length > 0 
                         ? Math.round(sessions.reduce((acc, s) => acc + s.accuracy, 0) / sessions.length)
                         : 0}%
                     </p>
                   </div>
-                  <Target className="h-10 w-10 text-green-600 dark:text-green-400" />
+                  <div className="h-10 w-10 rounded-lg bg-green-600 flex items-center justify-center shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                    <Target className="h-5 w-5 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-purple-200 dark:border-purple-800">
+            <Card className="relative overflow-hidden border-2 border-purple-100 dark:border-purple-900/50 hover:border-purple-500 dark:hover:border-purple-400 transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-purple-500/10 rounded-bl-full"></div>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Practice Sessions</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Practice Sessions</p>
+                    <p className="text-3xl font-black text-purple-600 dark:text-purple-400">
                       {sessions.filter(s => s.session_type === 'practice').length}
                     </p>
                   </div>
-                  <TrendingUp className="h-10 w-10 text-purple-600 dark:text-purple-400" />
+                  <div className="h-10 w-10 rounded-lg bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                    <TrendingUp className="h-5 w-5 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-orange-200 dark:border-orange-800">
+            <Card className="relative overflow-hidden border-2 border-orange-100 dark:border-orange-900/50 hover:border-orange-500 dark:hover:border-orange-400 transition-all duration-300 hover:shadow-xl hover:shadow-orange-500/20 group bg-white dark:bg-slate-800">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-orange-500/10 rounded-bl-full"></div>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">Exams Taken</p>
-                    <p className="text-3xl font-bold text-slate-900 dark:text-white">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Exams Taken</p>
+                    <p className="text-3xl font-black text-orange-600 dark:text-orange-400">
                       {sessions.filter(s => s.session_type === 'exam').length}
                     </p>
                   </div>
-                  <Award className="h-10 w-10 text-orange-600 dark:text-orange-400" />
+                  <div className="h-10 w-10 rounded-lg bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-110 transition-transform">
+                    <Award className="h-5 w-5 text-white" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
