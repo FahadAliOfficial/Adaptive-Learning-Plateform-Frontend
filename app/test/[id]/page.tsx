@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,6 +30,9 @@ function TestPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [questionTimeSpent, setQuestionTimeSpent] = useState<Record<string, number>>({})
   const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [hasSubmitted, setHasSubmitted] = useState(false)
+  const hasSubmittedRef = useRef(false)
 
   // Load session config from localStorage and fetch questions
   useEffect(() => {
@@ -84,12 +87,14 @@ function TestPage() {
 
   // Timer + per-question time tracking
   useEffect(() => {
-    if (!questions.length) return
+    if (!questions.length || hasSubmitted) return
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          handleSubmit()
+          if (!hasSubmittedRef.current && !isSubmitting) {
+            handleSubmit(true)
+          }
           return 0
         }
         return prev - 1
@@ -105,7 +110,7 @@ function TestPage() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [questions.length, currentQuestion])
+  }, [questions.length, currentQuestion, hasSubmitted, isSubmitting])
 
   const getExpectedTime = (difficulty: number) => {
     return Math.round(60 + (difficulty * 60))
@@ -135,6 +140,7 @@ function TestPage() {
 
   const handleSubmit = async (forceSubmit = false) => {
     if (!sessionConfig || !user?.id) return
+    if (hasSubmittedRef.current || isSubmitting) return
 
     const answeredCount = questions.filter((question) => answers[question.id]).length
 
@@ -144,6 +150,10 @@ function TestPage() {
     }
 
     try {
+      hasSubmittedRef.current = true
+      setHasSubmitted(true)
+      setIsSubmitting(true)
+
       const resultsPayload = questions.map((q) => {
         const selected = answers[q.id] || ""
         const correct = q.question_data.options.find((opt) => opt.is_correct)?.id || ""
@@ -189,7 +199,16 @@ function TestPage() {
       router.push(`/results/${params.id}`)
     } catch (error: any) {
       console.error('Failed to submit exam:', error)
-      console.error('Error details:', error?.data?.detail || error?.message || 'Unknown error')
+      const detail = error?.data?.detail || error?.message || 'Unknown error'
+      console.error('Error details:', detail)
+      if (typeof detail === "string" && detail.startsWith("Session already")) {
+        router.push(`/results/${params.id}`)
+        return
+      }
+      hasSubmittedRef.current = false
+      setHasSubmitted(false)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 

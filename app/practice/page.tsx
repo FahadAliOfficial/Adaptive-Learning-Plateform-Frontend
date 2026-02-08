@@ -31,20 +31,24 @@ import {
   Boxes
 } from "lucide-react"
 import { useAuth } from "@/lib/contexts/auth-context"
-import { getCurriculum, getTopicByMappingId, type LanguageCurriculum } from "@/lib/api/curriculum"
+import { getCurriculum, getTopicByMappingId, getTopicsForLanguage, type LanguageCurriculum } from "@/lib/api/curriculum"
 import { startExamSession } from "@/lib/api/exam"
 
-// 8 Universal Concepts
-const CONCEPTS = [
-  { id: "UNIV_VAR", name: "Variables & Data Types", icon: Variable, color: "from-blue-600 to-blue-500" },
-  { id: "UNIV_COND", name: "Conditionals", icon: GitBranch, color: "from-green-600 to-green-500" },
-  { id: "UNIV_LOOP", name: "Loops", icon: RefreshCw, color: "from-purple-600 to-purple-500" },
-  { id: "UNIV_FUNC", name: "Functions", icon: FunctionSquare, color: "from-orange-600 to-orange-500" },
-  { id: "UNIV_COLL", name: "Collections", icon: Database, color: "from-pink-600 to-pink-500" },
-  { id: "UNIV_ERR", name: "Error Handling", icon: AlertTriangle, color: "from-red-600 to-red-500" },
-  { id: "UNIV_OOP_BASIC", name: "OOP Basics", icon: Box, color: "from-yellow-600 to-yellow-500" },
-  { id: "UNIV_OOP_ADV", name: "Advanced OOP", icon: Boxes, color: "from-indigo-600 to-indigo-500" },
-]
+const CONCEPT_META: Record<string, { icon: typeof Target; color: string }> = {
+  UNIV_SYN_LOGIC: { icon: Variable, color: "from-blue-600 to-blue-500" },
+  UNIV_SYN_PREC: { icon: GitBranch, color: "from-green-600 to-green-500" },
+  UNIV_VAR: { icon: Variable, color: "from-blue-600 to-blue-500" },
+  UNIV_COND: { icon: GitBranch, color: "from-green-600 to-green-500" },
+  UNIV_LOOP: { icon: RefreshCw, color: "from-purple-600 to-purple-500" },
+  UNIV_FUNC: { icon: FunctionSquare, color: "from-orange-600 to-orange-500" },
+  UNIV_COLL: { icon: Database, color: "from-pink-600 to-pink-500" },
+  UNIV_ERR: { icon: AlertTriangle, color: "from-red-600 to-red-500" },
+  UNIV_OOP: { icon: Box, color: "from-yellow-600 to-yellow-500" },
+  UNIV_OOP_BASIC: { icon: Box, color: "from-yellow-600 to-yellow-500" },
+  UNIV_OOP_ADV: { icon: Boxes, color: "from-indigo-600 to-indigo-500" },
+}
+
+const DEFAULT_CONCEPT_META = { icon: Target, color: "from-slate-600 to-slate-500" }
 
 const MODES = [
   { 
@@ -180,7 +184,11 @@ function PracticeContent() {
   }
 
   const difficultyLabel = getDifficultyLabel()
-  const selectedConceptData = CONCEPTS.find(c => c.id === selectedConcept)
+  const availableConcepts = currentLanguage ? getTopicsForLanguage(curriculum, currentLanguage) : []
+  const selectedConceptInfo = availableConcepts.find((topic) => topic.mapping_id === selectedConcept)
+  const selectedConceptMeta = selectedConceptInfo
+    ? (CONCEPT_META[selectedConceptInfo.mapping_id] || DEFAULT_CONCEPT_META)
+    : null
   const selectedMode = MODES.find(m => m.id === mode)
 
   if (!currentLanguage) {
@@ -230,10 +238,11 @@ function PracticeContent() {
                     <SelectValue placeholder="Choose a concept..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {CONCEPTS.map((concept) => {
-                      const Icon = concept.icon
+                    {availableConcepts.map((concept) => {
+                      const meta = CONCEPT_META[concept.mapping_id] || DEFAULT_CONCEPT_META
+                      const Icon = meta.icon
                       return (
-                        <SelectItem key={concept.id} value={concept.id}>
+                        <SelectItem key={concept.mapping_id} value={concept.mapping_id}>
                           <div className="flex items-center gap-2">
                             <Icon className="h-4 w-4" />
                             <span>{concept.name}</span>
@@ -244,15 +253,15 @@ function PracticeContent() {
                   </SelectContent>
                 </Select>
 
-                {selectedConceptData && (
-                  <div className={`mt-4 p-4 rounded-lg bg-gradient-to-r ${selectedConceptData.color} bg-opacity-10 border-2 border-purple-200 dark:border-purple-900/50`}>
+                {selectedConceptInfo && selectedConceptMeta && (
+                  <div className={`mt-4 p-4 rounded-lg bg-gradient-to-r ${selectedConceptMeta.color} bg-opacity-10 border-2 border-purple-200 dark:border-purple-900/50`}>
                     <div className="flex items-center gap-3">
-                      <div className={`h-12 w-12 rounded-lg bg-gradient-to-br ${selectedConceptData.color} flex items-center justify-center shadow-lg`}>
-                        <selectedConceptData.icon className="h-6 w-6 text-white" />
+                      <div className={`h-12 w-12 rounded-lg bg-gradient-to-br ${selectedConceptMeta.color} flex items-center justify-center shadow-lg`}>
+                        <selectedConceptMeta.icon className="h-6 w-6 text-white" />
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white">
-                          {selectedConceptData.name}
+                          {selectedConceptInfo.name}
                         </p>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
                           Ready to practice this concept
