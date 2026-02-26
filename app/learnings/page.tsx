@@ -16,7 +16,6 @@ const languages = [
   { id: "javascript_es6", name: "JavaScript", logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg", color: "from-yellow-500 to-yellow-600" },
   { id: "cpp_20", name: "C++", logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/cplusplus/cplusplus-original.svg", color: "from-purple-500 to-purple-600" },
   { id: "java_17", name: "Java", logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/java/java-original.svg", color: "from-red-500 to-red-600" },
-  { id: "typescript_5", name: "TypeScript", logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg", color: "from-blue-400 to-blue-500" },
   { id: "go_1_21", name: "Go", logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/go/go-original.svg", color: "from-cyan-500 to-cyan-600" },
 ]
 
@@ -175,7 +174,7 @@ function LearningsPage() {
               return (
                 <Card
                   key={lang.language_id}
-                  className="hover:shadow-xl hover:shadow-blue-500/20 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-slate-800 relative overflow-hidden"
+                  className="hover:shadow-xl hover:shadow-blue-500/20 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-slate-800 relative overflow-hidden flex flex-col"
                 >
                   {/* Primary badge */}
                   {lang.is_primary && (
@@ -206,7 +205,7 @@ function LearningsPage() {
                       Last activity: {formatLastActivity(lang.last_practiced)}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="flex flex-col space-y-4 flex-1">
                     <div>
                       <div className="flex justify-between text-sm mb-2">
                         <span className="text-muted-foreground">Mastery</span>
@@ -242,7 +241,7 @@ function LearningsPage() {
                       </div>
                     )}
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-auto">
                       <Button
                         variant="outline"
                         className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-slate-700"

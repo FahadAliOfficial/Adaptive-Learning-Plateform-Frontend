@@ -19,173 +19,78 @@ import {
   Lightbulb,
   Loader2,
 } from "lucide-react"
-import { getCurriculum, getTopicsForLanguage, getTopicByMappingId } from "@/lib/api/curriculum"
+import { getCurriculum, getTopicsForLanguage, getTopicByMappingId, getStudentProgress, type TopicProgress, type StudentProgressResponse } from "@/lib/api/curriculum"
 import { getRLRecommendation } from "@/lib/api/rl"
 import { startExamSession } from "@/lib/api/exam"
 import { useAuth } from "@/lib/contexts/auth-context"
-
-type CoreConcept = {
-  id: string
-  name: string
-  description: string
-  order: number
-}
-
-// Fallback concepts (used if curriculum fetch fails)
-const DEFAULT_CORE_CONCEPTS: CoreConcept[] = [
-  {
-    id: "UNIV_SYN_LOGIC",
-    name: "Programming Logic Foundations",
-    description: "Entry points, execution flow, and basic logic",
-    order: 1,
-  },
-  {
-    id: "UNIV_SYN_PREC",
-    name: "Syntax Precision",
-    description: "Syntax rules, scoping, and coding standards",
-    order: 2,
-  },
-  {
-    id: "UNIV_VAR",
-    name: "Variables and Types",
-    description: "Data storage, primitives, and basic values",
-    order: 3,
-  },
-  {
-    id: "UNIV_COND",
-    name: "Conditionals",
-    description: "Decision-making with if/else logic",
-    order: 4,
-  },
-  {
-    id: "UNIV_LOOP",
-    name: "Iteration",
-    description: "Loops, ranges, and repetition",
-    order: 5,
-  },
-  {
-    id: "UNIV_FUNC",
-    name: "Functions",
-    description: "Reusable code blocks and parameters",
-    order: 6,
-  },
-  {
-    id: "UNIV_COLL",
-    name: "Data Structures",
-    description: "Lists, dictionaries, and collections",
-    order: 7,
-  },
-  {
-    id: "UNIV_OOP",
-    name: "OOP Basics",
-    description: "Classes, objects, and inheritance",
-    order: 8,
-  },
-]
-
-// TODO: Remove mock data - fetch from backend
-// API Endpoint: GET /api/learning-paths/{id}
-// Expected Response: {
-//   language_id: string,
-//   language_name: string,
-//   difficulty: number (0.0-1.0),
-//   total_topics: number,
-//   completed_topics: number,
-//   avg_accuracy: number,
-//   last_activity: ISO date string,
-//   has_taken_demo: boolean,
-//   topics: Array<{
-//     concept_id: string,
-//     mastery: number (0.0-1.0),
-//     fluency: number,
-//     confidence: number,
-//     last_practiced: ISO date,
-//     is_accessible: boolean,
-//     is_recommended: boolean,
-//     prerequisite_met: boolean
-//   }>
-// }
-const mockLearningData = {
-  language: "Python",
-  difficulty: 0.5, // 0.0-1.0 scale
-  totalTopics: 8,
-  completedTopics: 3,
-  accuracy: 75,
-  lastActivity: "2 hours ago",
-  hasTakenDemo: true,
-  // Topic accessibility data from backend
-  topicStatus: {
-    UNIV_SYN_LOGIC: { mastery: 0.82, accessible: true, recommended: false, completed: true, accuracy: 85 },
-    UNIV_SYN_PREC: { mastery: 0.68, accessible: true, recommended: false, completed: true, accuracy: 78 },
-    UNIV_VAR: { mastery: 0.45, accessible: true, recommended: true, completed: false, accuracy: 65 },
-    UNIV_COND: { mastery: 0.0, accessible: true, recommended: true, completed: false, accuracy: 0 },
-    UNIV_LOOP: { mastery: 0.0, accessible: false, recommended: false, completed: false, accuracy: 0 },
-    UNIV_FUNC: { mastery: 0.0, accessible: false, recommended: false, completed: false, accuracy: 0 },
-    UNIV_COLL: { mastery: 0.0, accessible: false, recommended: false, completed: false, accuracy: 0 },
-    UNIV_OOP: { mastery: 0.0, accessible: false, recommended: false, completed: false, accuracy: 0 },
-  },
-}
 
 function LearningDetailPage() {
   const router = useRouter()
   const params = useParams()
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [showDemoPrompt, setShowDemoPrompt] = useState(!mockLearningData.hasTakenDemo)
-  const [learningData, setLearningData] = useState(mockLearningData)
-  const [coreConcepts, setCoreConcepts] = useState<CoreConcept[]>(DEFAULT_CORE_CONCEPTS)
+  const [isLoading, setIsLoading] = useState(true)
+  const [progressData, setProgressData] = useState<StudentProgressResponse | null>(null)
   const [isStartingQuickPractice, setIsStartingQuickPractice] = useState<string | null>(null)
 
-  // TODO: Fetch learning path data from backend on mount
+  // Fetch student progress data from backend
   useEffect(() => {
-    const fetchLearningPath = async () => {
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/learning-paths/${params.id}`)
-      // const data = await response.json()
-      // setLearningData(data)
-
+    const fetchStudentProgress = async () => {
       const languageId = Array.isArray(params.id) ? params.id[0] : params.id
       if (!languageId) return
 
+      setIsLoading(true)
       try {
-        const curriculum = await getCurriculum()
-        const topics = getTopicsForLanguage(curriculum, languageId)
-        if (topics.length === 0) {
-          setCoreConcepts(DEFAULT_CORE_CONCEPTS)
-          return
-        }
-
-        const concepts = topics.map((topic, index) => ({
-          id: topic.mapping_id,
-          name: topic.name,
-          description: topic.sub_topics?.length
-            ? `Covers: ${topic.sub_topics.slice(0, 3).join(", ")}`
-            : "Core concept",
-          order: index + 1,
-        }))
-        setCoreConcepts(concepts)
+        const data = await getStudentProgress(languageId)
+        setProgressData(data)
       } catch (error) {
-        console.error("Failed to load curriculum:", error)
-        setCoreConcepts(DEFAULT_CORE_CONCEPTS)
+        console.error("Failed to load student progress:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    fetchLearningPath()
+    
+    fetchStudentProgress()
   }, [params.id])
 
-  const data = learningData
-  const totalTopics = coreConcepts.length || data.totalTopics
-
-  const getTopicStatus = (conceptId: string) => {
-    const status = data.topicStatus[conceptId as keyof typeof data.topicStatus]
-    if (status) return status
-    return { mastery: 0, accessible: false, recommended: false, completed: false, accuracy: 0 }
+  if (isLoading || !progressData) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading your progress...</p>
+        </div>
+      </div>
+    )
   }
+
+  const { topics, stats, language_name } = progressData
+  
+  // Calculate difficulty based on average mastery
+  const difficulty = stats.avg_mastery
 
   // Convert difficulty to label
   const getDifficultyLabel = (difficulty: number) => {
-    if (difficulty < 0.4) return "Easy"
-    if (difficulty < 0.7) return "Medium"
-    return "Hard"
+    if (difficulty < 0.4) return "Beginner"
+    if (difficulty < 0.7) return "Intermediate"
+    return "Advanced"
+  }
+
+  // Format last activity timestamp
+  const formatLastActivity = (timestamp: string | null): string => {
+    if (!timestamp) return "Never"
+    
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
   }
 
   const handleDemoTest = () => {
@@ -264,46 +169,23 @@ function LearningDetailPage() {
           {/* Header */}
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{data.language}</h1>
+              <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{language_name}</h1>
               <span
                 className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                  getDifficultyLabel(data.difficulty) === "Easy"
+                  getDifficultyLabel(difficulty) === "Beginner"
                     ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100"
-                    : getDifficultyLabel(data.difficulty) === "Medium"
+                    : getDifficultyLabel(difficulty) === "Intermediate"
                     ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-100"
                     : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
                 }`}
               >
-                {getDifficultyLabel(data.difficulty)}
+                {getDifficultyLabel(difficulty)}
               </span>
             </div>
             <p className="text-slate-600 dark:text-slate-400 text-lg">
-              Master {totalTopics} core programming concepts sequentially
+              Master {stats.total_topics} core programming concepts sequentially
             </p>
           </div>
-
-          {/* Demo Test Prompt */}
-          {showDemoPrompt && (
-            <Card className="mb-8 border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/30">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-yellow-900 dark:text-yellow-200">
-                  <div className="h-9 w-9 rounded-lg bg-yellow-500 flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-white" />
-                  </div>
-                  Take Demo Test First
-                </CardTitle>
-                <CardDescription className="text-yellow-800 dark:text-yellow-300">
-                  Start with a demo test to assess your current knowledge level and get personalized recommendations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={handleDemoTest} className="gap-2 bg-yellow-600 hover:bg-yellow-500 text-white">
-                  <PlayCircle className="h-4 w-4" />
-                  Take Demo Test
-                </Button>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Stats Cards */}
           <div className="grid gap-6 md:grid-cols-4 mb-8">
@@ -315,7 +197,7 @@ function LearningDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalTopics}</div>
+                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.total_topics}</div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Core programming topics
                 </p>
@@ -331,10 +213,10 @@ function LearningDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  {data.completedTopics}/{totalTopics}
+                  {stats.completed_topics}/{stats.total_topics}
                 </div>
                 <Progress
-                  value={totalTopics === 0 ? 0 : (data.completedTopics / totalTopics) * 100}
+                  value={stats.total_topics === 0 ? 0 : (stats.completed_topics / stats.total_topics) * 100}
                   className="mt-2"
                 />
               </CardContent>
@@ -349,7 +231,7 @@ function LearningDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                  {data.accuracy}%
+                  {stats.avg_accuracy}%
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Across completed topics
@@ -365,7 +247,7 @@ function LearningDetailPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{data.lastActivity}</div>
+                <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">{formatLastActivity(stats.last_activity)}</div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Keep the momentum!
                 </p>
@@ -383,16 +265,15 @@ function LearningDetailPage() {
             </div>
 
             <div className="grid gap-4">
-              {coreConcepts.map((concept) => {
-                const status = getTopicStatus(concept.id)
-                const isLocked = !status.accessible
-                const isRecommended = status.recommended
-                const isCompleted = status.completed
-                const mastery = Math.round(status.mastery * 100)
+              {topics.map((topic) => {
+                const isLocked = !topic.accessible
+                const isRecommended = topic.recommended || false
+                const isCompleted = topic.completed
+                const mastery = Math.round(topic.mastery * 100)
 
                 return (
                   <Card
-                    key={concept.id}
+                    key={topic.mapping_id}
                     className={`transition-all relative ${
                       isLocked
                         ? "opacity-60 cursor-not-allowed bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
@@ -417,14 +298,14 @@ function LearningDetailPage() {
                             ) : isLocked ? (
                               <Lock className="h-5 w-5" />
                             ) : (
-                              concept.order
+                              topic.order
                             )}
                           </div>
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <CardTitle className="text-xl text-slate-900 dark:text-white">
-                                {concept.name}
+                                {topic.name}
                               </CardTitle>
                               
                               {isRecommended && !isCompleted && !isLocked && (
@@ -450,13 +331,13 @@ function LearningDetailPage() {
                             </div>
                             
                             <CardDescription className="text-slate-600 dark:text-slate-400">
-                              {concept.description}
+                              {topic.description}
                             </CardDescription>
                           </div>
                         </div>
 
                         {/* Mastery Score */}
-                        {!isLocked && status.mastery > 0 && (
+                        {!isLocked && topic.mastery > 0 && (
                           <div className="text-right shrink-0">
                             <div className="text-xs text-slate-600 dark:text-slate-400 mb-1">Mastery</div>
                             <div className={`text-2xl font-bold ${
@@ -476,7 +357,7 @@ function LearningDetailPage() {
                     {!isLocked && (
                       <CardContent className="space-y-4">
                         {/* Mastery Progress Bar */}
-                        {status.mastery > 0 && (
+                        {topic.mastery > 0 && (
                           <div>
                             <div className="flex items-center justify-between text-sm mb-2">
                               <span className="text-slate-600 dark:text-slate-400">Progress</span>
@@ -492,11 +373,11 @@ function LearningDetailPage() {
                           className="w-full"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleQuickStart(concept.id, isCompleted)
+                            handleQuickStart(topic.mapping_id, isCompleted)
                           }}
-                          disabled={isStartingQuickPractice === concept.id}
+                          disabled={isStartingQuickPractice === topic.mapping_id}
                         >
-                          {isStartingQuickPractice === concept.id ? (
+                          {isStartingQuickPractice === topic.mapping_id ? (
                             <>
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                               Starting...

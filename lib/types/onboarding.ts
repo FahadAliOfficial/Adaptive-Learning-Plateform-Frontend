@@ -54,13 +54,6 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
     popular: true
   },
   {
-    id: 'typescript_5',
-    name: 'TypeScript',
-    description: 'JavaScript with types',
-    icon: '💙',
-    popular: true
-  },
-  {
     id: 'java_17',
     name: 'Java',
     description: 'Enterprise and Android',

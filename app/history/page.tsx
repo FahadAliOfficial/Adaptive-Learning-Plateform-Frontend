@@ -28,8 +28,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   javascript_es6: "JavaScript",
   java_17: "Java",
   cpp_20: "C++",
-  go_1_21: "Go",
-  typescript_5: "TypeScript"
+  go_1_21: "Go"
 }
 
 const SESSION_TYPE_COLORS = {

@@ -61,16 +61,6 @@ const languages = [
     hoverColor: "hover:border-cyan-500 dark:hover:border-cyan-400",
     bgColor: "bg-cyan-50 dark:bg-cyan-950",
   },
-  {
-    id: "typescript",
-    name: "TypeScript",
-    version: "5.0+",
-    logo: "https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg",
-    description: "Type-safe JavaScript for large-scale applications",
-    color: "from-blue-400 to-blue-500",
-    hoverColor: "hover:border-blue-400 dark:hover:border-blue-300",
-    bgColor: "bg-blue-50 dark:bg-blue-950",
-  },
 ]
 
 const difficultyLevels = [
@@ -123,8 +113,7 @@ function LanguageSelectionPage() {
     setError(null)
     
     try {
-      // Fix: TypeScript uses typescript_5 in backend, but UI shows "typescript"
-      const languageId = (selectedLanguage === "typescript" ? "typescript_5" : selectedLanguage) as LanguageId
+      const languageId = selectedLanguage as LanguageId
       const experienceLevel = selectedDifficulty as ExperienceLevel
       
       // Call API to update user profile

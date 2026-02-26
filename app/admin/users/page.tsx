@@ -508,7 +508,6 @@ export default function UserManagementPage() {
         <SelectItem value="java_17">Java</SelectItem>
         <SelectItem value="cpp_20">C++</SelectItem>
         <SelectItem value="go_1_21">Go</SelectItem>
-        <SelectItem value="typescript_5">TypeScript</SelectItem>
           </SelectContent>
         </Select>
           </div>

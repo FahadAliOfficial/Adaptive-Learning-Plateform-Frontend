@@ -10,13 +10,7 @@ export type LanguageId =
   | 'javascript_es6' 
   | 'java_17' 
   | 'cpp_20' 
-  | 'go_1_21' 
-  | 'typescript_5';
-
-export type ExperienceLevel = 'beginner' | 'intermediate' | 'advanced';
-
-/**
- * User profile data
+  | 'go_1_21';
  */
 export interface User {
   id: string;
