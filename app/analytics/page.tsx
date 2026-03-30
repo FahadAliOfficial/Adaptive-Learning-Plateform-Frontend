@@ -1,90 +1,281 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ProtectedRoute } from "@/components/protected-route"
 import { Sidebar } from "@/components/sidebar"
 import { MasteryHeatmap } from "@/components/mastery-heatmap"
 import { RecentSessions } from "@/components/recent-sessions"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, TrendingUp, Target, Clock } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { formatAPIError } from "@/lib/api/client"
+import {
+  getActiveTransferBoosts,
+  getDashboardSummary,
+  getRecentSynergyBonuses,
+} from "@/lib/api/dashboard"
+import { getLanguagePortfolio } from "@/lib/api/languages"
+import { useAuth } from "@/lib/contexts/auth-context"
+import { AlertTriangle, BarChart3, Clock, RefreshCw, Target, TrendingUp } from "lucide-react"
+
+interface HeatmapConceptData {
+  mastery: number
+  fluency: number
+  confidence: number
+  last_practiced: string
+  days_passed: number
+}
+
+interface RecentSessionData {
+  id: string
+  timestamp: string
+  concept_id: string
+  concept_name: string
+  sub_topic: string
+  score: number
+  difficulty: number
+  mastery_gain: number
+  questions_answered: number
+}
+
+type HeatmapDataMap = Record<string, HeatmapConceptData>
+
+interface LanguageOption {
+  id: string
+  name: string
+  isPrimary: boolean
+}
+
+const SYNERGY_WINDOW_OPTIONS = [7, 14, 30, 60]
+
+const ALL_LANGUAGE_OPTIONS: Array<{ id: string; name: string }> = [
+  { id: "python_3", name: "Python" },
+  { id: "javascript_es6", name: "JavaScript" },
+  { id: "java_17", name: "Java" },
+  { id: "cpp_20", name: "C++" },
+  { id: "go_1_21", name: "Go" },
+]
+
+const SUPPORTED_LANGUAGE_IDS = new Set(ALL_LANGUAGE_OPTIONS.map((option) => option.id))
+
+const LANGUAGE_NAME_FALLBACK: Record<string, string> = {
+  python_3: "Python",
+  javascript_es6: "JavaScript",
+  java_17: "Java",
+  cpp_20: "C++",
+  go_1_21: "Go",
+}
+
+function mapMasteryForHeatmap(
+  masteryData: Array<{
+    mapping_id: string
+    mastery: number
+    fluency: number
+    confidence: number
+    last_practiced: string | null
+    days_since_practice: number
+  }>
+): HeatmapDataMap {
+  const mapped: HeatmapDataMap = {}
+
+  for (const item of masteryData) {
+    mapped[item.mapping_id] = {
+      mastery: item.mastery,
+      fluency: item.fluency,
+      confidence: item.confidence,
+      last_practiced: item.last_practiced ?? new Date().toISOString(),
+      days_passed: Math.max(0, item.days_since_practice ?? 0),
+    }
+  }
+
+  return mapped
+}
+
+function mapSessionsForTimeline(
+  sessions: Array<{
+    id: string
+    timestamp: string
+    concept_id: string
+    concept_name: string
+    sub_topic: string | null
+    score: number
+    difficulty: number
+    mastery_gain: number
+    questions_answered: number
+  }>
+): RecentSessionData[] {
+  return sessions.map((session) => ({
+    id: session.id,
+    timestamp: session.timestamp,
+    concept_id: session.concept_id,
+    concept_name: session.concept_name,
+    sub_topic: session.sub_topic ?? session.concept_id,
+    score: session.score,
+    difficulty: session.difficulty,
+    mastery_gain: session.mastery_gain,
+    questions_answered: session.questions_answered,
+  }))
+}
+
+function normalizeToPercent(value: number): number {
+  if (value <= 1) return value * 100
+  return value
+}
 
 function AnalyticsPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentLanguage, setCurrentLanguage] = useState<string | null>(null)
-
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const [languageOptions, setLanguageOptions] = useState<LanguageOption[]>([])
+  const [synergyWindowDays, setSynergyWindowDays] = useState(7)
+  const [masteryData, setMasteryData] = useState<HeatmapDataMap>({})
+  const [recentSessions, setRecentSessions] = useState<RecentSessionData[]>([])
+  const [transferBoostCount, setTransferBoostCount] = useState(0)
+  const [synergyBonusCount, setSynergyBonusCount] = useState(0)
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   // Check if user has selected a language
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const selectedLanguage = localStorage.getItem('selectedLanguage')
+      const profileLanguage = user?.last_active_language ?? null
+      const languageToUse = selectedLanguage || profileLanguage
       
-      if (!selectedLanguage) {
+      if (!languageToUse) {
         router.push('/onboarding/language')
       } else {
-        setCurrentLanguage(selectedLanguage)
+        localStorage.setItem('selectedLanguage', languageToUse)
+        setCurrentLanguage(languageToUse)
       }
     }
-  }, [router])
+  }, [router, user])
 
-  // TODO: In production, fetch from API - POST /api/state-vector
-  // Mock mastery data for current language
-  const mockMasteryData = {
-    UNIV_VAR: { mastery: 0.82, fluency: 0.75, confidence: 0.88, last_practiced: "2026-01-05T10:00:00Z", days_passed: 1 },
-    UNIV_COND: { mastery: 0.68, fluency: 0.70, confidence: 0.65, last_practiced: "2026-01-03T14:00:00Z", days_passed: 3 },
-    UNIV_LOOP: { mastery: 0.45, fluency: 0.50, confidence: 0.42, last_practiced: "2025-12-28T09:00:00Z", days_passed: 9 },
-    UNIV_FUNC: { mastery: 0.0, fluency: 0.0, confidence: 0.0, last_practiced: "2026-01-06T00:00:00Z", days_passed: 0 },
-    UNIV_COLL: { mastery: 0.0, fluency: 0.0, confidence: 0.0, last_practiced: "2026-01-06T00:00:00Z", days_passed: 0 },
-    UNIV_ERR: { mastery: 0.0, fluency: 0.0, confidence: 0.0, last_practiced: "2026-01-06T00:00:00Z", days_passed: 0 },
-    UNIV_OOP_BASIC: { mastery: 0.0, fluency: 0.0, confidence: 0.0, last_practiced: "2026-01-06T00:00:00Z", days_passed: 0 },
-    UNIV_OOP_ADV: { mastery: 0.0, fluency: 0.0, confidence: 0.0, last_practiced: "2026-01-06T00:00:00Z", days_passed: 0 },
+  useEffect(() => {
+    if (!currentLanguage) return
+    const activeLanguage = currentLanguage
+
+    let isMounted = true
+
+    async function loadLanguageOptions() {
+      try {
+        const portfolio = await getLanguagePortfolio()
+        const portfolioOptions = portfolio.languages
+          .filter((language) => SUPPORTED_LANGUAGE_IDS.has(language.language_id))
+          .map((language) => ({
+            id: language.language_id,
+            name: language.language_name,
+            isPrimary: language.is_primary,
+          }))
+
+        const mergedById = new Map<string, LanguageOption>()
+        for (const option of ALL_LANGUAGE_OPTIONS) {
+          mergedById.set(option.id, {
+            id: option.id,
+            name: option.name,
+            isPrimary: false,
+          })
+        }
+
+        for (const option of portfolioOptions) {
+          mergedById.set(option.id, option)
+        }
+
+        if (SUPPORTED_LANGUAGE_IDS.has(activeLanguage) && !mergedById.has(activeLanguage)) {
+          mergedById.set(activeLanguage, {
+            id: activeLanguage,
+            name: LANGUAGE_NAME_FALLBACK[activeLanguage] ?? activeLanguage,
+            isPrimary: false,
+          })
+        }
+
+        const options = Array.from(mergedById.values()).sort((a, b) => {
+          if (a.isPrimary !== b.isPrimary) {
+            return a.isPrimary ? -1 : 1
+          }
+          return a.name.localeCompare(b.name)
+        })
+
+        if (!isMounted) return
+
+        setLanguageOptions(options)
+
+        if (!options.some((option) => option.id === currentLanguage)) {
+          const fallbackLanguage = options.find((option) => option.isPrimary)?.id ?? options[0].id
+          setCurrentLanguage(fallbackLanguage)
+          localStorage.setItem('selectedLanguage', fallbackLanguage)
+        }
+      } catch {
+        if (!isMounted) return
+        setLanguageOptions([
+          {
+            id: activeLanguage,
+            name: LANGUAGE_NAME_FALLBACK[activeLanguage] ?? activeLanguage,
+            isPrimary: false,
+          },
+        ])
+      }
+    }
+
+    loadLanguageOptions()
+
+    return () => {
+      isMounted = false
+    }
+  }, [currentLanguage])
+
+  const fetchAnalyticsData = useCallback(async () => {
+    if (!currentLanguage) return
+
+    setIsLoadingData(true)
+    setLoadError(null)
+
+    try {
+      const [summaryResult, transferBoostsResult, synergyBonusesResult] = await Promise.allSettled([
+        getDashboardSummary(currentLanguage),
+        getActiveTransferBoosts(currentLanguage),
+        getRecentSynergyBonuses(currentLanguage, synergyWindowDays),
+      ])
+
+      if (summaryResult.status !== "fulfilled") {
+        throw summaryResult.reason
+      }
+
+      const summary = summaryResult.value
+      setMasteryData(mapMasteryForHeatmap(summary.mastery_data))
+      setRecentSessions(mapSessionsForTimeline(summary.recent_sessions))
+      setTransferBoostCount(transferBoostsResult.status === "fulfilled" ? transferBoostsResult.value.length : 0)
+      setSynergyBonusCount(synergyBonusesResult.status === "fulfilled" ? synergyBonusesResult.value.length : 0)
+    } catch (error) {
+      setLoadError(formatAPIError(error))
+      setMasteryData({})
+      setRecentSessions([])
+      setTransferBoostCount(0)
+      setSynergyBonusCount(0)
+    } finally {
+      setIsLoadingData(false)
+    }
+  }, [currentLanguage, synergyWindowDays])
+
+  const handleLanguageChange = (languageId: string) => {
+    setCurrentLanguage(languageId)
+    localStorage.setItem('selectedLanguage', languageId)
   }
 
-  // TODO: In production, fetch from API - GET /api/sessions/recent
-  const mockRecentSessions = [
-    {
-      id: "1",
-      timestamp: "2026-01-05T14:30:00Z",
-      concept_id: "UNIV_VAR",
-      concept_name: "Variables & Data Types",
-      sub_topic: "variable_scope",
-      score: 0.85,
-      difficulty: 0.65,
-      mastery_gain: 0.08,
-      questions_answered: 10,
-    },
-    {
-      id: "2",
-      timestamp: "2026-01-03T10:15:00Z",
-      concept_id: "UNIV_COND",
-      concept_name: "Conditionals",
-      sub_topic: "if_else_basics",
-      score: 0.70,
-      difficulty: 0.50,
-      mastery_gain: 0.05,
-      questions_answered: 8,
-    },
-    {
-      id: "3",
-      timestamp: "2025-12-28T16:45:00Z",
-      concept_id: "UNIV_LOOP",
-      concept_name: "Loops",
-      sub_topic: "for_loop_basics",
-      score: 0.60,
-      difficulty: 0.45,
-      mastery_gain: 0.03,
-      questions_answered: 12,
-    },
-  ]
+  useEffect(() => {
+    if (!currentLanguage) return
+    fetchAnalyticsData()
+  }, [currentLanguage, fetchAnalyticsData])
 
   // Calculate analytics stats
-  const calculateStats = () => {
-    const concepts = Object.values(mockMasteryData)
+  const stats = useMemo(() => {
+    const concepts = Object.values(masteryData)
     const practiced = concepts.filter(c => c.mastery > 0)
-    const avgMastery = practiced.length > 0 
-      ? practiced.reduce((acc, c) => acc + c.mastery, 0) / practiced.length 
+    const avgMastery = practiced.length > 0
+      ? practiced.reduce((acc, c) => acc + c.mastery, 0) / practiced.length
       : 0
     const avgFluency = practiced.length > 0
       ? practiced.reduce((acc, c) => acc + c.fluency, 0) / practiced.length
@@ -92,10 +283,10 @@ function AnalyticsPage() {
     const avgConfidence = practiced.length > 0
       ? practiced.reduce((acc, c) => acc + c.confidence, 0) / practiced.length
       : 0
-    
-    const totalSessions = mockRecentSessions.length
-    const avgScore = mockRecentSessions.length > 0
-      ? mockRecentSessions.reduce((acc, s) => acc + s.score, 0) / mockRecentSessions.length
+
+    const totalSessions = recentSessions.length
+    const avgScore = recentSessions.length > 0
+      ? recentSessions.reduce((acc, session) => acc + normalizeToPercent(session.score), 0) / recentSessions.length
       : 0
 
     return {
@@ -104,11 +295,9 @@ function AnalyticsPage() {
       avgFluency: Math.round(avgFluency * 100),
       avgConfidence: Math.round(avgConfidence * 100),
       totalSessions,
-      avgScore: Math.round(avgScore * 100),
+      avgScore: Math.round(avgScore),
     }
-  }
-
-  const stats = calculateStats()
+  }, [masteryData, recentSessions])
 
   // Handlers
   const handleConceptClick = (conceptId: string) => {
@@ -123,13 +312,15 @@ function AnalyticsPage() {
     router.push(`/practice?concept=${conceptId}&subtopic=${subTopic}`)
   }
 
-  // Show loading while checking language
-  if (!currentLanguage) {
+  // Show loading while checking language or fetching analytics
+  if (!currentLanguage || isLoadingData) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
+          <p className="text-slate-600 dark:text-slate-400">
+            {!currentLanguage ? "Loading..." : "Loading your analytics..."}
+          </p>
         </div>
       </div>
     )
@@ -150,6 +341,68 @@ function AnalyticsPage() {
               Deep dive into your learning progress and performance
             </p>
           </div>
+
+          <Card className="mb-6 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+            <CardHeader>
+              <CardTitle className="text-base">Analytics Filters</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-xs text-slate-600 dark:text-slate-400">Language</p>
+                  <Select value={currentLanguage} onValueChange={handleLanguageChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languageOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.name}{option.isPrimary ? " (Primary)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs text-slate-600 dark:text-slate-400">Synergy Time Window</p>
+                  <Select
+                    value={String(synergyWindowDays)}
+                    onValueChange={(value) => setSynergyWindowDays(Number(value))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select time window" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SYNERGY_WINDOW_OPTIONS.map((days) => (
+                        <SelectItem key={days} value={String(days)}>
+                          Last {days} days
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {loadError && (
+            <Alert className="mb-6 border-2 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">
+              <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+              <AlertDescription className="flex flex-col gap-3 text-amber-800 dark:text-amber-200 md:flex-row md:items-center md:justify-between">
+                <span>Could not load analytics data: {loadError}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-transparent dark:text-amber-200 dark:hover:bg-amber-900/50"
+                  onClick={fetchAnalyticsData}
+                >
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Analytics Stats */}
           <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-6 mb-8">
@@ -234,11 +487,24 @@ function AnalyticsPage() {
             </Card>
           </div>
 
+          <Card className="mb-8 border-2 border-cyan-100 bg-gradient-to-r from-cyan-50 to-blue-50 dark:border-cyan-900/50 dark:from-slate-800 dark:to-slate-900">
+            <CardHeader>
+              <CardTitle className="text-lg text-slate-900 dark:text-white">Cross-Language Insights</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                {transferBoostCount > 0 || synergyBonusCount > 0
+                  ? `Active transfer boosts: ${transferBoostCount}. Recent synergy bonuses (last ${synergyWindowDays} days): ${synergyBonusCount}.`
+                  : "No cross-language boosts detected yet for your current language."}
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Mastery Heatmap */}
           <div className="mb-8">
             <MasteryHeatmap
               languageId={currentLanguage}
-              masteryData={mockMasteryData}
+              masteryData={masteryData}
               onConceptClick={handleConceptClick}
             />
           </div>
@@ -246,7 +512,7 @@ function AnalyticsPage() {
           {/* Recent Sessions Timeline */}
           <div className="mb-8">
             <RecentSessions
-              sessions={mockRecentSessions}
+              sessions={recentSessions}
               onPracticeAgain={handlePracticeAgain}
             />
           </div>
