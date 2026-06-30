@@ -50,6 +50,14 @@ const LANGUAGE_NAMES: Record<string, string> = {
   go_1_21: "Go"
 }
 
+interface CodeValidationResult {
+  is_valid: boolean
+  matched: boolean
+  comparison: {
+    expected: string
+    actual: string
+  }
+}
 export default function QuestionBankPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [loading, setLoading] = useState(false)
@@ -573,7 +581,7 @@ export default function QuestionBankPage() {
           continue
         }
 
-        const result = await apiClient("/api/code-execution/validate-question", {
+        const result = await apiClient<CodeValidationResult>("/api/code-execution/validate-question", {
           method: "POST",
           body: JSON.stringify({
             question_id: q.id,
