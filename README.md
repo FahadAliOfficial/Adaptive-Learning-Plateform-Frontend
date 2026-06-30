@@ -306,7 +306,10 @@ npm run lint
 
 ## 📄 License
 
-This project is for educational/demonstration purposes.
+MIT License
+
+Copyright (c) 2026 Fahad Ali
+
 
 ## 🤝 Contributing
 
