@@ -5,15 +5,18 @@
  * Used by AuthContext and authentication components.
  */
 
-import { post, get, put, setAccessToken, clearAccessToken } from './client';
+import { post, get, put, setAccessToken, clearAccessToken, getAccessToken } from './client';
 import type {
   LoginRequest,
   LoginResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
   RegisterRequest,
   RegisterResponse,
   TokenRefreshResponse,
   User,
   PasswordChangeRequest,
+  NotificationPreferences,
   LanguageId,
   ExperienceLevel,
 } from '@/lib/types/auth';
@@ -50,6 +53,13 @@ export async function login(data: LoginRequest): Promise<LoginResponse> {
   // Refresh token is automatically set as httpOnly cookie by backend
   
   return response;
+}
+
+/**
+ * Request password reset assistance.
+ */
+export async function forgotPassword(data: ForgotPasswordRequest): Promise<ForgotPasswordResponse> {
+  return post<ForgotPasswordResponse>('/api/auth/forgot-password', data);
 }
 
 /**
@@ -104,6 +114,22 @@ export async function changePassword(data: PasswordChangeRequest): Promise<{ suc
 }
 
 /**
+ * Get notification preferences for the current user.
+ */
+export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  return get<NotificationPreferences>('/api/auth/notification-preferences');
+}
+
+/**
+ * Update notification preferences for the current user.
+ */
+export async function updateNotificationPreferences(
+  data: NotificationPreferences
+): Promise<NotificationPreferences> {
+  return put<NotificationPreferences>('/api/auth/notification-preferences', data);
+}
+
+/**
  * Update user profile (language and experience level)
  * 
  * @param data - Language ID and experience level
@@ -123,7 +149,5 @@ export async function updateProfile(data: {
  * Note: Doesn't validate token - just checks presence.
  */
 export function isAuthenticated(): boolean {
-  // Import here to avoid circular dependency
-  const { getAccessToken } = require('./client');
   return getAccessToken() !== null;
 }

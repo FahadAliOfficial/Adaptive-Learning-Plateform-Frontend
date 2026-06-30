@@ -3,9 +3,10 @@
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { X, LayoutDashboard, Users, Database, Flag, MessageSquare, BarChart3, TrendingUp } from "lucide-react"
+import { X, LayoutDashboard, Users, Database, Flag, MessageSquare, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { BrandLogo } from "@/components/brand-logo"
 
 interface AdminSidebarProps {
   isOpen?: boolean
@@ -53,7 +54,7 @@ const navigation = [
 
 export function AdminSidebar({ isOpen = true, onClose }: AdminSidebarProps) {
   const pathname = usePathname()
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   return (
     <>
@@ -76,9 +77,7 @@ export function AdminSidebar({ isOpen = true, onClose }: AdminSidebarProps) {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
             <Link href="/admin" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
+              <BrandLogo className="h-10 w-10 rounded-xl p-1.5 transition-transform group-hover:scale-110" />
               <div>
                 <span className="text-lg font-black text-slate-900 dark:text-white">
                   {siteName}

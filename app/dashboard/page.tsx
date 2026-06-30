@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   // Check if user has selected a language
   useEffect(() => {

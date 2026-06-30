@@ -10,7 +10,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import * as authAPI from '@/lib/api/auth';
-import { clearAccessToken } from '@/lib/api/client';
+import { clearAccessToken, formatAPIError } from '@/lib/api/client';
 import type { User, LoginRequest, RegisterRequest } from '@/lib/types/auth';
 
 interface AuthContextValue {
@@ -27,6 +27,20 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+function formatAuthError(error: unknown, fallback: string): string {
+  const message = formatAPIError(error);
+
+  if (message === 'Invalid email or password') {
+    return 'Invalid email or password. Please check your credentials and try again.';
+  }
+
+  if (message.includes('Failed to fetch') || message.includes('Network request failed')) {
+    return 'Cannot connect to the backend server. Please make sure it is running and try again.';
+  }
+
+  return message || fallback;
+}
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -58,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const userData = await authAPI.getMe();
       setUser(userData);
       
-    } catch (err) {
+    } catch {
       // Refresh failed - user is not authenticated (this is OK)
       setUser(null);
       clearAccessToken();
@@ -108,8 +122,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         router.push('/dashboard');
       }
       
-    } catch (err: any) {
-      const errorMessage = err.data?.detail || 'Login failed. Please try again.';
+    } catch (err: unknown) {
+      const errorMessage = formatAuthError(err, 'Login failed. Please try again.');
       setError(errorMessage);
       throw err;
     } finally {
@@ -144,8 +158,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Always redirect to onboarding for new users to select their language
       router.push('/onboarding/language');
       
-    } catch (err: any) {
-      const errorMessage = err.data?.detail || 'Registration failed. Please try again.';
+    } catch (err: unknown) {
+      const errorMessage = formatAuthError(err, 'Registration failed. Please try again.');
       setError(errorMessage);
       throw err;
     } finally {

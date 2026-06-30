@@ -3,11 +3,12 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, BookOpen, Settings, LogOut, X, Brain, Menu, Sparkles, User, Target, History, HelpCircle } from "lucide-react"
+import { LayoutDashboard, BookOpen, Settings, LogOut, X, Menu, Sparkles, User, Target, History, HelpCircle } from "lucide-react"
 import { Button } from "./ui/button"
 import { ThemeToggle } from "./theme-toggle"
 import { useState } from "react"
 import { useAuth } from "@/lib/contexts/auth-context"
+import { BrandLogo } from "@/components/brand-logo"
 
 interface SidebarProps {
   isOpen?: boolean
@@ -75,7 +76,7 @@ const navigation = [
 
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const { logout } = useAuth()
 
@@ -119,15 +120,13 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           {/* Logo & Close Button */}
           <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800">
             <Link href="/" className="flex items-center space-x-2 group">
-              <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-blue-600 to-green-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
-                <Brain className="h-5 w-5 text-white" />
-              </div>
+              <BrandLogo className="h-10 w-10 rounded-xl p-1.5 transition-transform group-hover:scale-110" />
               <div className="flex flex-col">
                 <span className="font-bold text-lg text-slate-900 dark:text-white">
                   {siteName}
                 </span>
                 <span className="text-[9px] font-medium text-slate-500 dark:text-slate-400 -mt-0.5">
-                  AI Learning Platform
+                  Adaptive Learning Platform
                 </span>
               </div>
             </Link>

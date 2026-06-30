@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 import { Button } from "./ui/button"
-import { Menu, Brain, Sparkles } from "lucide-react"
+import { Menu, Sparkles } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 
 interface NavbarProps {
   onMenuClick?: () => void
@@ -11,7 +12,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ onMenuClick, showMenu = false }: NavbarProps) {
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-blue-100/50 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60 shadow-sm">
@@ -28,12 +29,7 @@ export function Navbar({ onMenuClick, showMenu = false }: NavbarProps) {
         )}
         
         <Link href="/" className="flex items-center space-x-3 group">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-green-500 rounded-xl blur-sm opacity-75 group-hover:opacity-100 transition-opacity" />
-            <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-green-500 flex items-center justify-center shadow-lg shadow-blue-500/50 group-hover:scale-110 transition-transform">
-              <Brain className="h-6 w-6 text-white" />
-            </div>
-          </div>
+          <BrandLogo className="h-11 w-11 rounded-xl p-1.5 transition-transform group-hover:scale-110" />
           <div className="flex flex-col">
             <span className="font-black text-xl bg-gradient-to-r from-blue-600 via-green-500 to-blue-600 bg-clip-text text-transparent animate-gradient-x">
               {siteName}

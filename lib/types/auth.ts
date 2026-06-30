@@ -37,6 +37,21 @@ export interface LoginRequest {
 }
 
 /**
+ * Forgot password request payload.
+ */
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+/**
+ * Forgot password response.
+ */
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
+/**
  * Login response from API
  */
 export interface LoginResponse {
@@ -85,6 +100,16 @@ export interface TokenRefreshResponse {
 export interface PasswordChangeRequest {
   current_password: string;
   new_password: string;
+}
+
+/**
+ * Notification preferences stored by the backend.
+ */
+export interface NotificationPreferences {
+  email_notifications: boolean;
+  test_reminders: boolean;
+  weekly_progress: boolean;
+  achievement_alerts: boolean;
 }
 
 /**

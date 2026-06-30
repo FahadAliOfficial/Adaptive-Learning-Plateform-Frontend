@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Brain, ArrowRight, CheckCircle2, Sparkles, Loader2 } from "lucide-react"
+import { ArrowRight, CheckCircle2, Sparkles, Loader2 } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 import * as authAPI from "@/lib/api/auth"
 import type { LanguageId, ExperienceLevel } from "@/lib/types/auth"
 import { ProtectedRoute } from "@/components/protected-route"
@@ -97,7 +98,7 @@ function LanguageSelectionPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   // Redirect to dashboard if user has already completed onboarding
   useEffect(() => {
@@ -145,9 +146,7 @@ function LanguageSelectionPage() {
       <div className="w-full max-w-6xl">
         {/* Header */}
         <div className="text-center mb-12 space-y-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-green-500 shadow-2xl shadow-blue-500/50 mb-4">
-            <Brain className="h-10 w-10 text-white" />
-          </div>
+          <BrandLogo className="mx-auto mb-4 h-20 w-20 rounded-2xl p-1.5 shadow-2xl shadow-blue-500/30" />
           <h1 className="text-5xl font-black bg-gradient-to-r from-blue-600 via-green-500 to-blue-600 bg-clip-text text-transparent animate-gradient-x">
             Choose Your Learning Path
           </h1>

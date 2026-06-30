@@ -12,6 +12,12 @@ import type { APIError } from '@/lib/types/auth';
 
 const API_BASE_URL = ''; // Empty = same origin, proxied through Next.js rewrites
 const REQUEST_TIMEOUT = 10000; // 10 seconds timeout
+const AUTH_RETRY_EXCLUDED_ENDPOINTS = new Set([
+  '/api/auth/login',
+  '/api/auth/login/form',
+  '/api/auth/register',
+  '/api/auth/refresh',
+]);
 
 /**
  * In-memory access token storage (cleared on page refresh)
@@ -90,13 +96,14 @@ async function parseErrorResponse(response: Response): Promise<APIError> {
  * @returns Response data
  * @throws APIClientError on HTTP errors
  */
-export async function apiClient<T = any>(
+export async function apiClient<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
 
   const isAuthEndpoint = endpoint.startsWith('/api/auth/');
+  const shouldRetryWithRefresh = !AUTH_RETRY_EXCLUDED_ENDPOINTS.has(endpoint);
 
   if (!accessToken && !isAuthEndpoint) {
     const refreshedToken = await refreshAccessTokenIfPossible();
@@ -135,7 +142,7 @@ export async function apiClient<T = any>(
     clearTimeout(timeoutId);
     
     // Handle 401 Unauthorized - try to refresh token
-    if (response.status === 401 && endpoint !== '/api/auth/refresh') {
+    if (response.status === 401 && shouldRetryWithRefresh) {
       const refreshedToken = await refreshAccessTokenIfPossible();
 
       // Refresh token is invalid/expired -> force login
@@ -201,7 +208,7 @@ export async function apiClient<T = any>(
 /**
  * GET request helper
  */
-export async function get<T = any>(
+export async function get<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
@@ -211,9 +218,9 @@ export async function get<T = any>(
 /**
  * POST request helper
  */
-export async function post<T = any>(
+export async function post<T = unknown>(
   endpoint: string,
-  data?: any,
+  data?: unknown,
   options: RequestInit = {}
 ): Promise<T> {
   return apiClient<T>(endpoint, {
@@ -226,9 +233,9 @@ export async function post<T = any>(
 /**
  * PUT request helper
  */
-export async function put<T = any>(
+export async function put<T = unknown>(
   endpoint: string,
-  data?: any,
+  data?: unknown,
   options: RequestInit = {}
 ): Promise<T> {
   return apiClient<T>(endpoint, {
@@ -241,7 +248,7 @@ export async function put<T = any>(
 /**
  * DELETE request helper
  */
-export async function del<T = any>(
+export async function del<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {

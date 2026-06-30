@@ -5,7 +5,7 @@ import { Navbar } from "@/components/navbar"
 import { Brain, Target, TrendingUp, Zap, ArrowRight, CheckCircle2, BookOpen, Users, Award, Sparkles, BarChart3, Lightbulb, Code2, Rocket, Star, Quote } from "lucide-react"
 
 export default function Home() {
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900 text-slate-900 dark:text-white mx-auto">
@@ -441,7 +441,7 @@ export default function Home() {
                 {
                   name: "Sarah Johnson",
                   role: "Computer Science Student",
-                  content: "LearnRL completely transformed how I study programming. The adaptive learning approach helped me improve my Python skills by 80% in just 2 months!",
+                  content: "RAPL AI completely transformed how I study programming. The adaptive learning approach helped me improve my Python skills by 80% in just 2 months!",
                   rating: 5
                 },
                 {
@@ -453,7 +453,7 @@ export default function Home() {
                 {
                   name: "Emma Williams",
                   role: "Self-Taught Developer",
-                  content: "As a self-learner, LearnRL gave me the structure I needed. The detailed analytics help me track my progress and stay motivated every day.",
+                  content: "As a self-learner, RAPL AI gave me the structure I needed. The detailed analytics help me track my progress and stay motivated every day.",
                   rating: 5
                 }
               ].map((testimonial, index) => (

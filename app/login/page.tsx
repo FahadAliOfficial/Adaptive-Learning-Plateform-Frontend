@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Brain, ArrowRight, Mail, Lock, Sparkles, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowRight, Mail, Lock, Sparkles, AlertCircle, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/contexts/auth-context"
+import { BrandLogo } from "@/components/brand-logo"
 import { z } from "zod"
 
 // Validation schema
@@ -20,7 +20,6 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter()
   const { login, isLoading, error: authError, clearError } = useAuth()
   
   const [formData, setFormData] = useState<LoginFormData>({
@@ -30,7 +29,7 @@ export default function LoginPage() {
   
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   const accountStatus = typeof authError === 'string' && authError.startsWith('ACCOUNT_STATUS:')
     ? authError.split(':')[1]
@@ -67,7 +66,7 @@ export default function LoginPage() {
       
       // Redirect is handled in AuthContext based on user.last_active_language
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Error handling is done in AuthContext
       console.error('Login failed:', err)
     }
@@ -80,9 +79,7 @@ export default function LoginPage() {
         <div className="hidden md:flex flex-col items-center justify-center space-y-8 p-8">
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-green-500 opacity-20 blur-3xl rounded-full animate-pulse" />
-            <div className="relative h-32 w-32 rounded-3xl bg-gradient-to-br from-blue-600 to-green-500 flex items-center justify-center shadow-2xl shadow-blue-500/50 rotate-6 hover:rotate-0 transition-transform duration-500">
-              <Brain className="h-16 w-16 text-white" />
-            </div>
+            <BrandLogo className="relative h-32 w-32 rounded-3xl p-2 shadow-2xl shadow-blue-500/30 rotate-6 hover:rotate-0 transition-transform duration-500" />
           </div>
           <div className="text-center space-y-4">
             <h1 className="text-5xl font-black bg-gradient-to-r from-blue-600 via-green-500 to-blue-600 bg-clip-text text-transparent animate-gradient-x">
@@ -222,7 +219,7 @@ export default function LoginPage() {
               </div>
 
               <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
                   className="font-bold text-blue-600 dark:text-blue-400 hover:underline"

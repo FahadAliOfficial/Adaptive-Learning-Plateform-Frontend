@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Brain, ArrowRight, Mail, Lock, Sparkles, AlertCircle, Loader2 } from "lucide-react"
+import { ArrowRight, Mail, Lock, Sparkles, AlertCircle, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/contexts/auth-context"
 import { formatAPIError } from "@/lib/api/client"
+import { BrandLogo } from "@/components/brand-logo"
 import { z } from "zod"
 
 // Validation schema
@@ -36,7 +37,7 @@ export default function RegisterPage() {
   
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
-  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL"
+  const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI"
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,9 +83,7 @@ export default function RegisterPage() {
         <div className="hidden md:flex flex-col items-center justify-center space-y-8 p-8">
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-green-500 to-blue-600 opacity-20 blur-3xl rounded-full animate-pulse" />
-            <div className="relative h-32 w-32 rounded-3xl bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center shadow-2xl shadow-green-500/50 -rotate-6 hover:rotate-0 transition-transform duration-500">
-              <Brain className="h-16 w-16 text-white" />
-            </div>
+            <BrandLogo className="relative h-32 w-32 rounded-3xl p-2 shadow-2xl shadow-green-500/30 -rotate-6 hover:rotate-0 transition-transform duration-500" />
           </div>
           <div className="text-center space-y-4">
             <h1 className="text-5xl font-black bg-gradient-to-r from-green-600 via-blue-500 to-green-600 bg-clip-text text-transparent animate-gradient-x">

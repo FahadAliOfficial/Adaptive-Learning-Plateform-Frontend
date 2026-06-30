@@ -10,7 +10,7 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "LearnRL";
+const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "RAPL AI";
 
 export const metadata: Metadata = {
   title: `${siteName} - AI-Powered Programming Learning Platform`,
@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <ThemeProvider defaultTheme="system" storageKey="learnrl-theme">
+        <ThemeProvider defaultTheme="system" storageKey="rapl-theme">
           <AuthProvider>
             {children}
           </AuthProvider>
